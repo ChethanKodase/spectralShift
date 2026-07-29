@@ -2,27 +2,31 @@
 
 '''
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=2
 conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 for StudyLayer in $(seq 0 27); do
-    python qwen/Qwen2p5FullDistancesOverlap.py --attck_type bsa --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack $StudyLayer --kthSingVec -10 --attackMode lan
+    python qwen/Qwen2p5FullDistancesOverlapSSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack $StudyLayer --kthSingVec -10 --attackMode lan
 done
 
 
 
 
 
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=3
 conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 for StudyLayer in $(seq 0 31); do
-    python qwen/Qwen2p5FullDistancesOverlap.py --attck_type bsa --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack $StudyLayer --LanLayerTrack 0 --kthSingVec 10 --attackMode vis
+    python qwen/Qwen2p5FullDistancesOverlapSSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack $StudyLayer --LanLayerTrack 0 --kthSingVec 10 --attackMode vis
 done
+
+
+
+
 
 '''
 
@@ -1223,7 +1227,7 @@ def main():
     PostAttackAlignments = []
     PreAttackAlignments = []
     AlignmnetIncreases = []
-    NumSamplesConsidered = 39
+    NumSamplesConsidered = 38
     AggregationOverFlattenedAlignmentDistributionsOriginal = []
     AggregationFlattenedAlignmentDistributionsAdversary = []
     for attackSample in range(1,NumSamplesConsidered):
@@ -1257,9 +1261,23 @@ def main():
         # filename (towardsNull/whichMLP/balancingAlpha) that has no Qwen
         # counterpart -- the Qwen BSA trainer (qwen/QwenUntargeted_BSA.py)
         # never produced files with that naming scheme.
-        adv_noise_path = (
+        '''adv_noise_path = (
             f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
             f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_.pt"
+        )'''
+
+    # python qwen/QwenUntargted_SSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --towardsNull 0.5 --whichMLP gate_proj --whichMLPVis gate_proj --chosenLanLayers 2 --chosenVisLayers 0 1 2 4 5 6 7 8 9 14 24
+
+        towardsNull = 0.5
+        whichMLP = "gate_proj"
+        whichMLPVis = "gate_proj"
+        chosenLanLayers = [2]
+        chosenVisLayers = [0, 1, 2, 4, 5, 6, 7, 8, 9, 14, 24]
+        adv_noise_path = (
+            f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
+            f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_"
+            f"AttackStartLayer_{AttackStartLayer}_numLayerstAtAtime_{numLayerstAtAtime}_"
+            f"num_steps_{num_steps}_towardsNull_{towardsNull}_{whichMLP}_{whichMLPVis}_{chosenLanLayers}_{chosenVisLayers}.pt"
         )
 
         best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype)
@@ -1461,7 +1479,7 @@ def main():
 
             plt.tight_layout()
 
-            save_dir = f"qwen/OverlapDistancesAvg"
+            save_dir = f"qwen/OverlapDistancesAvgSSGRA"
 
             os.makedirs(save_dir, exist_ok=True)
             save_path = os.path.join(
