@@ -2,34 +2,14 @@
 
 '''
 
-export CUDA_VISIBLE_DEVICES=2
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for StudyLayer in $(seq 0 27); do
-    python qwen/Qwen2p5FullDistancesOverlapSSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack $StudyLayer --kthSingVec -10 --attackMode lan
-done
-
-
-
-
-
 export CUDA_VISIBLE_DEVICES=3
 conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
-for StudyLayer in $(seq 0 31); do
-    python qwen/Qwen2p5FullDistancesOverlapSSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack $StudyLayer --LanLayerTrack 0 --kthSingVec 10 --attackMode vis
-done
-
-
-
-
+python qwen/Qwen2p5FullHistogramQuantitativeVis.py --attck_type bsa --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --attackMode vis
 
 '''
-
 
 
 
@@ -41,7 +21,6 @@ import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 
 import sys
-import csv
 import argparse
 import random
 import numpy as np
@@ -53,7 +32,12 @@ import torch.nn.functional as F
 from PIL import Image
 from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 import matplotlib.pyplot as plt
+import numpy as np
 
+from scipy.stats import wasserstein_distance
+
+from scipy.spatial.distance import jensenshannon
+import pandas as pd
 # ----------------------------
 # Reproducibility
 # MODIFIED vs Gemma: ported verbatim from the existing, known-working Qwen
@@ -344,11 +328,19 @@ def getMeanAlignmentWithTopRightSingularVector(InputToLayer, topRightSingularVec
     # Mean across tokens
     mean_energy = per_token_energy.mean().item()
 
-    # MODIFIED: return the raw (un-reduced) coeffs instead of coeffs.mean(dim=1).
-    # We need the pre-reduction coeffs so that, at the call site, we can compute
-    # an L2 difference against another (original/weak/strong) coeffs tensor
-    # BEFORE doing the token-wise averaging.
-    return mean_energy, coeffs
+    # MODIFIED vs Gemma (necessary fix): average over the TOKEN axis, which
+    # is dim=0 for this (N, k) coeffs tensor, not dim=1. Gemma's original
+    # `coeffs.mean(dim=1)` happened to average over k (the singular-vector
+    # index) here, which "worked" only because every one of Gemma's 50
+    # samples produces the exact same fixed 896x896 canvas and therefore the
+    # same N. Qwen2.5-VL uses native dynamic-resolution patching, so N
+    # (vision tokens, and the total multimodal sequence length for language
+    # hooks) is different for every image. Averaging over the true token
+    # axis (dim=0) makes the returned distribution a fixed, architecture-
+    # defined length (k = in_dim of this weight matrix) that no longer
+    # depends on how many tokens a given image produced, so the cross-sample
+    # torch.stack(...) later in main() is valid regardless of resolution.
+    return mean_energy, coeffs.mean(dim=0)
 
 def getMeanAlignmentWithTopLeftSingularVector(InputToLayer, topRightSingularVector):
     v = topRightSingularVector.to(InputToLayer)
@@ -385,14 +377,11 @@ def getMeanAlignmentWithAttentionHeadTopRightSingularVector(InputToLayer, topRig
     #dots = H_hat @ V_hat.T               # (N, num_heads)
     #mean_abs_value = dots.abs().mean().item()
 
-    # MODIFIED: return the raw (un-reduced) coeffs (shape h,n,k) instead of
-    # coeffs.mean(dim=1). Same reasoning as above: we need the pre-reduction
-    # tensor to compute an L2 difference against another coeffs tensor first.
-    # NOTE: this helper is fully generic in num_heads (it just reads V's own
-    # shape), so it works unchanged for Qwen's vision heads (MHA, 16 heads)
-    # AND for the language-model query heads (28) as well as the GQA
-    # key/value heads (4) -- no modification needed here.
-    return mean_energy_all, coeffs
+    # NOTE: unlike the plain-Linear helper above, `dim=1` here already IS the
+    # token axis (coeffs shape is (num_heads, N, k)), so this average over
+    # tokens is correct as-is and does not depend on N -- no change needed
+    # for Qwen's variable per-image token count.
+    return mean_energy_all, coeffs.mean(dim=1)
 
 
 def getMeanAlignmentWithAttentionHeadTopLeftSingularVector(OutputOfLayer, num_headsT, topLeftSingularVector):
@@ -594,6 +583,24 @@ def debug_hook(module, inputs, output):
         print("output.shape:", output.shape)
     else:
         print("output type:", type(output))
+
+def center_of_mass_shift(orig, adv):
+    ranks = np.arange(len(orig))
+    w_orig = orig**2
+    w_adv = adv**2
+    com_orig = np.sum(ranks * w_orig) / np.sum(w_orig)
+    com_adv = np.sum(ranks * w_adv) / np.sum(w_adv)
+    shift = com_adv - com_orig
+
+    return com_orig, com_adv, shift
+
+
+
+def mean_alignment_shift(orig, adv):
+    mean_orig = np.mean(orig)
+    mean_adv = np.mean(adv)
+    delta_mean = mean_adv - mean_orig
+    return mean_orig, mean_adv, delta_mean
 
 # ----------------------------
 # ORIGINAL-SPACE Adam attack (here: single forward pass against a *loaded*
@@ -840,12 +847,7 @@ def adam_attack_original_space(
     FlattenedAlignmentDistributions = []
     for i in range(len(AlignmentDistributions)):
         #print("AlignmentDistributions[i].shape", AlignmentDistributions[i].flatten().shape)
-        # MODIFIED: kept un-flattened (raw coeffs, shape (N,k) or (h,n,k)) instead
-        # of AlignmentDistributions[i].flatten(). We need the original
-        # (pre-reduction) shape at the call site to compute an L2 difference
-        # against another adversary's coeffs BEFORE doing the token-wise
-        # averaging that used to happen inside the helper functions above.
-        FlattenedAlignmentDistributions.append(AlignmentDistributions[i])
+        FlattenedAlignmentDistributions.append(AlignmentDistributions[i].flatten())
     #RightSingularInputAlignmentWhole.append(RightSingularInputAlignment)
 
 
@@ -878,10 +880,10 @@ def main():
     parser.add_argument("--numLayerstAtAtime", type=int, default=2,
                         help="Number of layers taken at a time to attack")
 
-    parser.add_argument("--VisionLayerTrack", type=int, default=2,
-                        help="whcih vision layer you want to talk")
-    parser.add_argument("--LanLayerTrack", type=int, default=2,
-                        help="whcih language layer you want to talk")
+    #parser.add_argument("--VisionLayerTrack", type=int, default=2,
+    #                    help="whcih vision layer you want to talk")
+    #parser.add_argument("--LanLayerTrack", type=int, default=2,
+    #                    help="whcih language layer you want to talk")
     parser.add_argument("--kthSingVec", type=int, default=0,
                     help="Amonhg the k singular vectors which one do you wanty")
     parser.add_argument("--attackMode", type=str, default="lan",
@@ -899,10 +901,9 @@ def main():
     AttackStartLayer = int(args.AttackStartLayer)
     numLayerstAtAtime = int(args.numLayerstAtAtime)
 
-    VisionLayerTrack = int(args.VisionLayerTrack)
-    LanLayerTrack = int(args.LanLayerTrack)
 
-    kthSingVec = int(args.kthSingVec)
+
+
     attackMode = str(args.attackMode)
 
 
@@ -911,15 +912,7 @@ def main():
     MAX_NEW_TOKENS = 128
 
 
-    #attackMode = "lan"
-    #attackMode = "vis"
 
-    #IMAGE_PATH = f"qwen/dataSamples/interference68.jpeg"
-
-
-    #os.makedirs("qwen/outputsStorageImagenet", exist_ok=True)
-    #os.makedirs(f"qwen/outputsStorageImagenet/advOutputs/{attackSample}", exist_ok=True)
-    #os.makedirs(f"qwen/outputsStorageImagenet/convergence/{attackSample}", exist_ok=True)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
@@ -949,17 +942,12 @@ def main():
     #----------------------attention head hyper parameters extraction------------------------
 
 
+
     def getTopRightSingularVector(down_proj):
-        if kthSingVec<0:
-            return torch.linalg.svd(down_proj.weight.to(torch.float32))[2][:]
-        else:
-            return torch.linalg.svd(down_proj.weight.to(torch.float32))[2][:]
+        return torch.linalg.svd(down_proj.weight.to(torch.float32))[2][:]
 
     def getTopLeftSingularVector(down_proj):
-        if kthSingVec<0:
-            return torch.linalg.svd(down_proj.weight.to(torch.float32))[0][:]
-        else:
-            return torch.linalg.svd(down_proj.weight.to(torch.float32))[0][:]
+        return torch.linalg.svd(down_proj.weight.to(torch.float32))[0][:]
 
     # MODIFIED vs Gemma: Qwen2.5-VL's vision-to-language "merger" is a plain
     # nn.Sequential(Linear, GELU, Linear) -- unlike Gemma's multi_modal_projector,
@@ -976,10 +964,7 @@ def main():
         for h in range(num_heads):
             Wh = param_heads[h]
             U, S, Vh = torch.linalg.svd(Wh.to(torch.float32) )
-            if kthSingVec<0:
-                query_vh_per_head.append(Vh[:])
-            else:
-                query_vh_per_head.append(Vh[:])
+            query_vh_per_head.append(Vh[:])
         query_vh_per_head = torch.stack(query_vh_per_head, 0)
         return query_vh_per_head
 
@@ -991,10 +976,7 @@ def main():
         for h in range(num_heads):
             Wh = param_heads[h]
             U, S, Vh = torch.linalg.svd(Wh.to(torch.float32) )
-            if kthSingVec<0:
-                query_vh_per_head.append(U[:])
-            else:
-                query_vh_per_head.append(U[:])
+            query_vh_per_head.append(U[:])
         query_vh_per_head = torch.stack(query_vh_per_head, 0)
         return query_vh_per_head
 
@@ -1027,16 +1009,6 @@ def main():
             u_per_head.append(U[:])
         return torch.stack(u_per_head, 0)
 
-    d_modelT = getattr(text_cfg, "hidden_size")
-    num_headsT = getattr(text_cfg, "num_attention_heads")
-    # MODIFIED vs Gemma: Qwen2.5-7B-Instruct's language model uses
-    # Grouped-Query Attention (num_key_value_heads < num_attention_heads).
-    # k_proj/v_proj must therefore be split using num_kv_headsT, not
-    # num_headsT, otherwise the per-head reshape below is not an integer
-    # split. This is a necessary correctness fix vs. the Gemma script, which
-    # reused a single num_headsT constant for q/k/v alike.
-    num_kv_headsT = getattr(text_cfg, "num_key_value_heads", num_headsT)
-
     #print("num_headsT", num_headsT)
     def getTopRightSingularVectorForLanAttentioHeads(qryParam, num_heads_local):
         param = qryParam.weight.to(torch.float32)
@@ -1046,10 +1018,7 @@ def main():
         for h in range(num_heads_local):
             Wh = param_heads[h]
             U, S, Vh = torch.linalg.svd(Wh.to(torch.float32) )
-            if kthSingVec<0:
-                query_vh_per_head.append(Vh[:])
-            else:
-                query_vh_per_head.append(Vh[:])
+            query_vh_per_head.append(Vh[:])
         query_vh_per_head = torch.stack(query_vh_per_head, 0)
         return query_vh_per_head
 
@@ -1061,492 +1030,433 @@ def main():
         for h in range(num_heads_local):
             Wh = param_heads[h]
             U, S, Vh = torch.linalg.svd(Wh.to(torch.float32) )
-            if kthSingVec<0:
-                query_vh_per_head.append(U[:])
-            else:
-                query_vh_per_head.append(U[:])
+            query_vh_per_head.append(U[:])
+
         query_vh_per_head = torch.stack(query_vh_per_head, 0)
         return query_vh_per_head
 
 
-    with torch.no_grad():
-
-        # ------- vision hooks begin ----------------
-        # MODIFIED vs Gemma: Qwen fuses q/k/v into a single Linear (attn.qkv).
-        # We register the SAME pre-hook module three times (once per logical
-        # q/k/v "channel") so the rest of the code (qry0_inputs/key0_inputs/
-        # val0_inputs) stays structurally identical to the Gemma version --
-        # each hook fires on the same forward call and stores the same shared
-        # input tensor, which is exactly what getTopRightSingularVectorForVisionQKV
-        # expects to be compared against (the q/k/v weight SLICES differ, not
-        # the input).
-        qkvParam = vision_blocks[VisionLayerTrack].attn.qkv
-        hook_handle = qkvParam.register_forward_pre_hook(qry0_pre_hook)
-        hook_handle = qkvParam.register_forward_hook(qry0_forward_hook)
-        #------------------------------------------------------------------------------------------------------------
-        #------------------------------------------------------------------------------------------------------------
-        hook_handle = qkvParam.register_forward_pre_hook(key0_pre_hook)
-        hook_handle = qkvParam.register_forward_hook(key0_forward_hook)
-        #------------------------------------------------------------------------------------------------------------
-        #------------------------------------------------------------------------------------------------------------
-        hook_handle = qkvParam.register_forward_pre_hook(val0_pre_hook)
-        hook_handle = qkvParam.register_forward_hook(val0_forward_hook)
-        #------------------------------------------------------------------------------------------------------------
-        #------------------------------------------------------------------------------------------------------------
-
-        visOutProjParam = vision_blocks[VisionLayerTrack].attn.proj
-        hook_handle = visOutProjParam.register_forward_pre_hook(visOutProj_pre_hook)
-        hook_handle = visOutProjParam.register_forward_hook(visOutProj_forward_hook)
-
-        #------------------------------------------------------------------------------------------------------------
-        #------------------------------------------------------------------------------------------------------------
-
-        # MODIFIED vs Gemma: FC1/FC2 -> visGate/visUp/visDown (SwiGLU MLP)
-        visGateParam = vision_blocks[VisionLayerTrack].mlp.gate_proj
-        hook_handle = visGateParam.register_forward_pre_hook(visGate_pre_hook)
-        hook_handle = visGateParam.register_forward_hook(visGate_forward_hook)
-        #------------------------------------------------------------------------------------------------------------
-        #------------------------------------------------------------------------------------------------------------
-
-        visUpParam = vision_blocks[VisionLayerTrack].mlp.up_proj
-        hook_handle = visUpParam.register_forward_pre_hook(visUp_pre_hook)
-        hook_handle = visUpParam.register_forward_hook(visUp_forward_hook)
-        #------------------------------------------------------------------------------------------------------------
-        #------------------------------------------------------------------------------------------------------------
-
-        visDownParam = vision_blocks[VisionLayerTrack].mlp.down_proj
-        hook_handle = visDownParam.register_forward_pre_hook(visDown_pre_hook)
-        hook_handle = visDownParam.register_forward_hook(visDown_forward_hook)
-
-        #------------------------------------------------------------------------------------------------------------
-        #------------------------------------------------------------------------------------------------------------
-
-        #------------ vision-to-language merger hook (hook the final Linear
-        # inside merger.mlp so the captured input dim matches its weight) -----
-        MulModProjParam = vision_module.merger.mlp[2]
-        hook_handle = MulModProjParam.register_forward_pre_hook(MulModProj_pre_hook)
-        hook_handle = MulModProjParam.register_forward_hook(MulModProj_forward_hook)
-        # ------- language hooks begin ----------------
-
-        qryLanParam = language_layers[LanLayerTrack].self_attn.q_proj
-        hook_handle = qryLanParam.register_forward_pre_hook(qryLan_pre_hook)
-        hook_handle = qryLanParam.register_forward_hook(qryLan_forward_hook)
+    d_modelT = getattr(text_cfg, "hidden_size")
+    num_headsT = getattr(text_cfg, "num_attention_heads")
+    # MODIFIED vs Gemma: Qwen2.5-7B-Instruct's language model uses
+    # Grouped-Query Attention (num_key_value_heads < num_attention_heads).
+    # k_proj/v_proj must therefore be split using num_kv_headsT, not
+    # num_headsT, otherwise the per-head reshape below is not an integer
+    # split. This is a necessary correctness fix vs. the Gemma script, which
+    # reused a single num_headsT constant for q/k/v alike.
+    num_kv_headsT = getattr(text_cfg, "num_key_value_heads", num_headsT)
 
 
-        keyLanParam = language_layers[LanLayerTrack].self_attn.k_proj
-        hook_handle = keyLanParam.register_forward_pre_hook(keyLan_pre_hook)
-        hook_handle = keyLanParam.register_forward_hook(keyLan_forward_hook)
+    #VisionLayerTrack = int(args.VisionLayerTrack)
+    #sLanLayerTrack = int(args.LanLayerTrack)
 
-        valLanParam = language_layers[LanLayerTrack].self_attn.v_proj
-        hook_handle = valLanParam.register_forward_pre_hook(valLan_pre_hook)
-        hook_handle = valLanParam.register_forward_hook(valLan_forward_hook)
+    # MODIFIED vs Gemma: distinct output directory/filename for the Qwen
+    # sweep so it never collides with the Gemma CSVs (and with the Lan
+    # sweep's own CSV), and the directory is created here (via os.makedirs)
+    # since it does not exist by default.
+    csv_dir = "qwen/QuantitativeAlignmentShift"
+    os.makedirs(csv_dir, exist_ok=True)
+    csv_path = os.path.join(csv_dir, "alignment_shift_sweepVis_qwen.csv")
+    write_header = not os.path.exists(csv_path)
 
+    # MODIFIED vs Gemma: Qwen2.5-VL's vision tower has 32 blocks (0..31, see
+    # qwen/model_parameters.txt), vs Gemma's 34, so the sweep range is
+    # adjusted accordingly.
+    for VisionLayerTrack in range(32):
+        LanLayerTrack = 0
 
-        gate_proj = language_layers[LanLayerTrack].mlp.gate_proj # layer 0 doing great
-        hook_handle = gate_proj.register_forward_pre_hook(gate_proj_pre_hook)
-        hook_handle = gate_proj.register_forward_hook(gate_proj_forward_hook)
+        with torch.no_grad():
 
-        up_proj = language_layers[LanLayerTrack].mlp.up_proj # layer 0 doing great
-        hook_handle = up_proj.register_forward_pre_hook(up_proj_pre_hook)
-        hook_handle = up_proj.register_forward_hook(up_proj_forward_hook)
+            # ------- vision hooks begin ----------------
+            # MODIFIED vs Gemma: Qwen fuses q/k/v into a single Linear
+            # (attn.qkv). We register the SAME pre-hook module three times
+            # (once per logical q/k/v "channel") so the rest of the code
+            # (qry0_inputs/key0_inputs/val0_inputs) stays structurally
+            # identical to the Gemma version.
+            qkvParam = vision_blocks[VisionLayerTrack].attn.qkv
+            hook_handle = qkvParam.register_forward_pre_hook(qry0_pre_hook)
+            hook_handle = qkvParam.register_forward_hook(qry0_forward_hook)
+            #------------------------------------------------------------------------------------------------------------
+            #------------------------------------------------------------------------------------------------------------
+            hook_handle = qkvParam.register_forward_pre_hook(key0_pre_hook)
+            hook_handle = qkvParam.register_forward_hook(key0_forward_hook)
+            #------------------------------------------------------------------------------------------------------------
+            #------------------------------------------------------------------------------------------------------------
+            hook_handle = qkvParam.register_forward_pre_hook(val0_pre_hook)
+            hook_handle = qkvParam.register_forward_hook(val0_forward_hook)
+            #------------------------------------------------------------------------------------------------------------
+            #------------------------------------------------------------------------------------------------------------
 
+            visOutProjParam = vision_blocks[VisionLayerTrack].attn.proj
+            hook_handle = visOutProjParam.register_forward_pre_hook(visOutProj_pre_hook)
+            hook_handle = visOutProjParam.register_forward_hook(visOutProj_forward_hook)
 
-        down_proj = language_layers[LanLayerTrack].mlp.down_proj # layer 0 doing great
-        hook_handle = down_proj.register_forward_pre_hook(down_proj_pre_hook)
-        hook_handle = down_proj.register_forward_hook(down_proj_forward_hook)
+            #------------------------------------------------------------------------------------------------------------
+            #------------------------------------------------------------------------------------------------------------
 
-        allTopRightSingularVectors = [getTopRightSingularVectorForVisionQKV(qkvParam, "q"),
-                                      getTopLeftSingularVectorForVisionQKV(qkvParam, "q"),
+            # MODIFIED vs Gemma: FC1/FC2 -> visGate/visUp/visDown (SwiGLU MLP)
+            visGateParam = vision_blocks[VisionLayerTrack].mlp.gate_proj
+            hook_handle = visGateParam.register_forward_pre_hook(visGate_pre_hook)
+            hook_handle = visGateParam.register_forward_hook(visGate_forward_hook)
+            #------------------------------------------------------------------------------------------------------------
+            #------------------------------------------------------------------------------------------------------------
 
-                                      getTopRightSingularVectorForVisionQKV(qkvParam, "k"),
-                                      getTopLeftSingularVectorForVisionQKV(qkvParam, "k"),
+            visUpParam = vision_blocks[VisionLayerTrack].mlp.up_proj
+            hook_handle = visUpParam.register_forward_pre_hook(visUp_pre_hook)
+            hook_handle = visUpParam.register_forward_hook(visUp_forward_hook)
+            #------------------------------------------------------------------------------------------------------------
+            #------------------------------------------------------------------------------------------------------------
 
-                                      getTopRightSingularVectorForVisionQKV(qkvParam, "v"),
-                                      getTopLeftSingularVectorForVisionQKV(qkvParam, "v"),
+            visDownParam = vision_blocks[VisionLayerTrack].mlp.down_proj
+            hook_handle = visDownParam.register_forward_pre_hook(visDown_pre_hook)
+            hook_handle = visDownParam.register_forward_hook(visDown_forward_hook)
 
-                                      getTopRightSingularVector(visOutProjParam),
-                                      getTopLeftSingularVector(visOutProjParam),
+            #------------------------------------------------------------------------------------------------------------
+            #------------------------------------------------------------------------------------------------------------
 
-                                      getTopRightSingularVector(visGateParam),
-                                      getTopLeftSingularVector(visGateParam),
+            #------------ vision-to-language merger hook (hook the final
+            # Linear inside merger.mlp so the captured input dim matches its
+            # weight) -----
+            MulModProjParam = vision_module.merger.mlp[2]
+            hook_handle = MulModProjParam.register_forward_pre_hook(MulModProj_pre_hook)
+            hook_handle = MulModProjParam.register_forward_hook(MulModProj_forward_hook)
+            # ------- language hooks begin ----------------
 
-                                      getTopRightSingularVector(visUpParam),
-                                      getTopLeftSingularVector(visUpParam),
-
-                                      getTopRightSingularVector(visDownParam),
-                                      getTopLeftSingularVector(visDownParam),
-
-                                      getTopRightSingularVector(MulModProjParam),
-                                      getTopLeftSingularVector(MulModProjParam),
-
-                                      getTopRightSingularVectorForLanAttentioHeads(qryLanParam, num_headsT),
-                                      getTopLeftSingularVectorForLanAttentioHeads(qryLanParam, num_headsT),
-
-                                      getTopRightSingularVectorForLanAttentioHeads(keyLanParam, num_kv_headsT),
-                                      getTopLeftSingularVectorForLanAttentioHeads(keyLanParam, num_kv_headsT),
-
-                                      getTopRightSingularVectorForLanAttentioHeads(valLanParam, num_kv_headsT),
-                                      getTopLeftSingularVectorForLanAttentioHeads(valLanParam, num_kv_headsT),
-
-                                      getTopRightSingularVector(gate_proj),
-                                      getTopLeftSingularVector(gate_proj),
-
-                                      getTopRightSingularVector(up_proj),
-                                      getTopLeftSingularVector(up_proj),
-
-                                      getTopRightSingularVector(down_proj),
-                                      getTopLeftSingularVector(down_proj)]
-
-    # ---------------- hook ----------------------
-
-    # Load original image (keep original resolution)
-    '''point_labels = [
-    "query proj\n(vis)", "key proj\n(vis)", "value proj\n(vis)", "att output\nproj (vis)",
-    "MLP gate\n(vis)", "MLP up\n(vis)", "MLP down\n(vis)", "Vis-to-lan\nproj", "query proj\n(lan)",
-    "key proj\n(lan)", "value proj\n(lan)", "MLP gate\nproj(lan)", "MLP up\nproj (lan)",
-    "MLP down\nproj (lan)"
-    ]'''
-
-    point_labels = [
-    "query proj", "key proj", "value proj", "att output\nproj",
-    "MLP gate\n(vis)", "MLP up\n(vis)", "MLP down\n(vis)", "Vis-to-lan\nproj", "query proj\n",
-    "key proj\n", "value proj\n", "MLP gate\nproj", "MLP up\nproj",
-    "MLP down\nproj"
-    ]
+            qryLanParam = language_layers[LanLayerTrack].self_attn.q_proj
+            hook_handle = qryLanParam.register_forward_pre_hook(qryLan_pre_hook)
+            hook_handle = qryLanParam.register_forward_hook(qryLan_forward_hook)
 
 
-    if attackMode == "vis":
-        # MODIFIED vs Gemma: Qwen's vision side has 8 tracked points instead
-        # of 7 (extra visUp entry), so we drop the last one (the vis-to-lan
-        # connector, which is layer-independent) leaving the first 7.
-        point_labels = point_labels[:7]
-    else:
-        # MODIFIED vs Gemma: language items now start at index 8 (was 7).
-        point_labels = point_labels[8:]
+            keyLanParam = language_layers[LanLayerTrack].self_attn.k_proj
+            hook_handle = keyLanParam.register_forward_pre_hook(keyLan_pre_hook)
+            hook_handle = keyLanParam.register_forward_hook(keyLan_forward_hook)
 
-    PostAttackAlignments = []
-    PreAttackAlignments = []
-    AlignmnetIncreases = []
-    NumSamplesConsidered = 38
-    AggregationOverFlattenedAlignmentDistributionsOriginal = []
-    AggregationFlattenedAlignmentDistributionsAdversary = []
-    for attackSample in range(1,NumSamplesConsidered):
-        #attackSample = 1
-        # MODIFIED vs Gemma: same dataset directory / filename convention
-        # used by qwen/QwenUntargeted_BSA_inference.py, so we load the exact
-        # same original images the perturbations were trained against.
-        IMAGE_PATH = f"../interpretAttacks/llava_attack/dataSamplesForQuant/{attackSample}.JPEG"
+            valLanParam = language_layers[LanLayerTrack].self_attn.v_proj
+            hook_handle = valLanParam.register_forward_pre_hook(valLan_pre_hook)
+            hook_handle = valLanParam.register_forward_hook(valLan_forward_hook)
 
 
-        pil = Image.open(IMAGE_PATH).convert("RGB")
-        x_orig01 = pil_to_tensor01(pil).to(device)
+            gate_proj = language_layers[LanLayerTrack].mlp.gate_proj # layer 0 doing great
+            hook_handle = gate_proj.register_forward_pre_hook(gate_proj_pre_hook)
+            hook_handle = gate_proj.register_forward_hook(gate_proj_forward_hook)
 
-        # Build template inputs ONCE (inserts image tokens in input_ids)
-        template_inputs = build_template_inputs(processor, QUESTION, pil, device)
-
-        # Clean output: preprocess original (differentiable) then generate
-        '''pv_clean, grid_clean = qwen_preprocess_differentiable(x_orig01, processor)
-
-        print("\n=== CLEAN OUTPUT ===")
-        clean_text = run_generation_with_pixel_values(model, processor, template_inputs, pv_clean, grid_clean, max_new_tokens=MAX_NEW_TOKENS)
-        print(clean_text)'''
-
-        if device.type == "cuda":
-            torch.cuda.empty_cache()
-
-        # MODIFIED vs Gemma: load the SAME perturbation naming convention used
-        # by qwen/QwenUntargeted_BSA_inference.py (the file that already
-        # loads/replays the 50-sample BSA perturbations for Qwen2.5-VL).
-        # Gemma's examiner used a much more elaborate "saa_BSAexp"-specific
-        # filename (towardsNull/whichMLP/balancingAlpha) that has no Qwen
-        # counterpart -- the Qwen BSA trainer (qwen/QwenUntargeted_BSA.py)
-        # never produced files with that naming scheme.
-        '''adv_noise_path = (
-            f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
-            f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_.pt"
-        )'''
-
-    # python qwen/QwenUntargted_SSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --towardsNull 0.5 --whichMLP gate_proj --whichMLPVis gate_proj --chosenLanLayers 2 --chosenVisLayers 0 1 2 4 5 6 7 8 9 14 24
-
-        towardsNull = 0.5
-        whichMLP = "gate_proj"
-        whichMLPVis = "gate_proj"
-        chosenLanLayers = [2]
-        chosenVisLayers = [0, 1, 2, 4, 5, 6, 7, 8, 9, 14, 24]
-        adv_noise_path = (
-            f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
-            f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_"
-            f"AttackStartLayer_{AttackStartLayer}_numLayerstAtAtime_{numLayerstAtAtime}_"
-            f"num_steps_{num_steps}_towardsNull_{towardsNull}_{whichMLP}_{whichMLPVis}_{chosenLanLayers}_{chosenVisLayers}.pt"
-        )
-
-        best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype)
-
-        # MODIFIED: build a "weak adversary" - gaussian noise scaled to the same
-        # L_inf epsilon bound as the trained ("strong") adversary. The clamping
-        # inside adam_attack_original_space (x_orig01 +/- epsilon) applies to
-        # whatever delta is passed in, so this receives the exact same L_inf
-        # bound treatment as best_delta.
-        weak_delta = torch.randn_like(best_delta) * epsilon
-
-        x_adv01, best_pert, RightSingularInputAlignmentAgainstAdversary, FlattenedAlignmentDistributionsAdversary = adam_attack_original_space(
-            model=model,
-            processor=processor,
-            template_inputs=template_inputs,
-            x_orig01=x_orig01,
-            attck_type=attck_type,
-            num_steps=num_steps,
-            lr=lr,
-            epsilon=epsilon,
-            device=device,
-            #save_conv_path=conv_path,
-            AttackStartLayer = AttackStartLayer,
-            numLayerstAtAtime = numLayerstAtAtime,
-            allTopRightSingularVectors = allTopRightSingularVectors,
-            best_delta = best_delta
-        )
-        if attackMode == "vis":
-            RightSingularInputAlignmentAgainstAdversary = RightSingularInputAlignmentAgainstAdversary[:7]
-            FlattenedAlignmentDistributionsAdversary = FlattenedAlignmentDistributionsAdversary[:7]
-
-        else:
-            RightSingularInputAlignmentAgainstAdversary = RightSingularInputAlignmentAgainstAdversary[8:]
-            FlattenedAlignmentDistributionsAdversary = FlattenedAlignmentDistributionsAdversary[8:]
-
-        #print("FlattenedAlignmentDistributionsAdversary", FlattenedAlignmentDistributionsAdversary)
-        #FlattenedAlignmentDistributionsAdversary = np.array(FlattenedAlignmentDistributionsAdversary.item())
+            up_proj = language_layers[LanLayerTrack].mlp.up_proj # layer 0 doing great
+            hook_handle = up_proj.register_forward_pre_hook(up_proj_pre_hook)
+            hook_handle = up_proj.register_forward_hook(up_proj_forward_hook)
 
 
-        #for i in range(len(FlattenedAlignmentDistributionsAdversary)):
-            #print("FlattenedAlignmentDistributionsAdversary[i].shape", FlattenedAlignmentDistributionsAdversary[i].shape)
+            down_proj = language_layers[LanLayerTrack].mlp.down_proj # layer 0 doing great
+            hook_handle = down_proj.register_forward_pre_hook(down_proj_pre_hook)
+            hook_handle = down_proj.register_forward_hook(down_proj_forward_hook)
 
-        final = RightSingularInputAlignmentAgainstAdversary
-        PostAttackAlignments.append(RightSingularInputAlignmentAgainstAdversary)
-        #print("final", final)
+            allTopRightSingularVectors = [getTopRightSingularVectorForVisionQKV(qkvParam, "q"),
+                                        getTopLeftSingularVectorForVisionQKV(qkvParam, "q"),
 
-        #------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        x_adv01, best_pert, RightSingularInputAlignmentAgainstOriginal, FlattenedAlignmentDistributionsOriginal = adam_attack_original_space(
-            model=model,
-            processor=processor,
-            template_inputs=template_inputs,
-            x_orig01=x_orig01,
-            attck_type=attck_type,
-            num_steps=num_steps,
-            lr=lr,
-            epsilon=epsilon,
-            device=device,
-            #save_conv_path=conv_path,
-            AttackStartLayer = AttackStartLayer,
-            numLayerstAtAtime = numLayerstAtAtime,
-            allTopRightSingularVectors = allTopRightSingularVectors,
-            best_delta = best_delta*0
-        )
+                                        getTopRightSingularVectorForVisionQKV(qkvParam, "k"),
+                                        getTopLeftSingularVectorForVisionQKV(qkvParam, "k"),
+
+                                        getTopRightSingularVectorForVisionQKV(qkvParam, "v"),
+                                        getTopLeftSingularVectorForVisionQKV(qkvParam, "v"),
+
+                                        getTopRightSingularVector(visOutProjParam),
+                                        getTopLeftSingularVector(visOutProjParam),
+
+                                        getTopRightSingularVector(visGateParam),
+                                        getTopLeftSingularVector(visGateParam),
+
+                                        getTopRightSingularVector(visUpParam),
+                                        getTopLeftSingularVector(visUpParam),
+
+                                        getTopRightSingularVector(visDownParam),
+                                        getTopLeftSingularVector(visDownParam),
+
+                                        getTopRightSingularVector(MulModProjParam),
+                                        getTopLeftSingularVector(MulModProjParam),
+
+                                        getTopRightSingularVectorForLanAttentioHeads(qryLanParam, num_headsT),
+                                        getTopLeftSingularVectorForLanAttentioHeads(qryLanParam, num_headsT),
+
+                                        getTopRightSingularVectorForLanAttentioHeads(keyLanParam, num_kv_headsT),
+                                        getTopLeftSingularVectorForLanAttentioHeads(keyLanParam, num_kv_headsT),
+
+                                        getTopRightSingularVectorForLanAttentioHeads(valLanParam, num_kv_headsT),
+                                        getTopLeftSingularVectorForLanAttentioHeads(valLanParam, num_kv_headsT),
+
+                                        getTopRightSingularVector(gate_proj),
+                                        getTopLeftSingularVector(gate_proj),
+
+                                        getTopRightSingularVector(up_proj),
+                                        getTopLeftSingularVector(up_proj),
+
+                                        getTopRightSingularVector(down_proj),
+                                        getTopLeftSingularVector(down_proj)]
+
+        # ---------------- hook ----------------------
+
+        # Load original image (keep original resolution)
+        '''point_labels = [
+        "query proj\n(vis)", "key proj\n(vis)", "value proj\n(vis)", "att output\nproj (vis)",
+        "MLP gate\n(vis)", "MLP up\n(vis)", "MLP down\n(vis)", "Vis-to-lan\nproj", "query proj\n(lan)",
+        "key proj\n(lan)", "value proj\n(lan)", "MLP gate\nproj(lan)", "MLP up\nproj (lan)",
+        "MLP down\nproj (lan)"
+        ]'''
+
+        point_labels = [
+        "query proj", "key proj", "value proj", "att output\nproj",
+        "MLP gate\n(vis)", "MLP up\n(vis)", "MLP down\n(vis)", "Vis-to-lan\nproj", "query proj\n",
+        "key proj\n", "value proj\n", "MLP gate\nproj", "MLP up\nproj",
+        "MLP down\nproj"
+        ]
+
 
         if attackMode == "vis":
-            RightSingularInputAlignmentAgainstOriginal = RightSingularInputAlignmentAgainstOriginal[:7]
-            FlattenedAlignmentDistributionsOriginal = FlattenedAlignmentDistributionsOriginal[:7]
-
+            # MODIFIED vs Gemma: Qwen's vision side has 8 tracked points
+            # instead of 7 (extra visUp entry), so we drop the last one (the
+            # vis-to-lan connector, which is layer-independent) leaving the
+            # first 7.
+            point_labels = point_labels[:7]
         else:
-            RightSingularInputAlignmentAgainstOriginal = RightSingularInputAlignmentAgainstOriginal[8:]
-            FlattenedAlignmentDistributionsOriginal = FlattenedAlignmentDistributionsOriginal[8:]
+            # MODIFIED vs Gemma: language items now start at index 8 (was 7).
+            point_labels = point_labels[8:]
+
+        PostAttackAlignments = []
+        PreAttackAlignments = []
+        AlignmnetIncreases = []
+        NumSamplesConsidered = 39
+        AggregationOverFlattenedAlignmentDistributionsOriginal = []
+        AggregationFlattenedAlignmentDistributionsAdversary = []
+        for attackSample in range(1,NumSamplesConsidered):
+            #attackSample = 1
+            # MODIFIED vs Gemma: same dataset directory / filename convention
+            # used by qwen/QwenUntargeted_BSA_inference.py, so we load the
+            # exact same original images the perturbations were trained
+            # against.
+            IMAGE_PATH = f"../interpretAttacks/llava_attack/dataSamplesForQuant/{attackSample}.JPEG"
 
 
-            #print("len(FlattenedAlignmentDistributionsOriginal)", len(FlattenedAlignmentDistributionsOriginal))
+            pil = Image.open(IMAGE_PATH).convert("RGB")
+            x_orig01 = pil_to_tensor01(pil).to(device)
 
-        # MODIFIED: third pass - weak (gaussian, same L_inf bound) adversary.
-        x_adv01, best_pert, RightSingularInputAlignmentAgainstWeak, FlattenedAlignmentDistributionsWeak = adam_attack_original_space(
-            model=model,
-            processor=processor,
-            template_inputs=template_inputs,
-            x_orig01=x_orig01,
-            attck_type=attck_type,
-            num_steps=num_steps,
-            lr=lr,
-            epsilon=epsilon,
-            device=device,
-            AttackStartLayer = AttackStartLayer,
-            numLayerstAtAtime = numLayerstAtAtime,
-            allTopRightSingularVectors = allTopRightSingularVectors,
-            best_delta = weak_delta
-        )
+            # Build template inputs ONCE (inserts image tokens in input_ids)
+            template_inputs = build_template_inputs(processor, QUESTION, pil, device)
 
-        if attackMode == "vis":
-            RightSingularInputAlignmentAgainstWeak = RightSingularInputAlignmentAgainstWeak[:7]
-            FlattenedAlignmentDistributionsWeak = FlattenedAlignmentDistributionsWeak[:7]
-        else:
-            RightSingularInputAlignmentAgainstWeak = RightSingularInputAlignmentAgainstWeak[8:]
-            FlattenedAlignmentDistributionsWeak = FlattenedAlignmentDistributionsWeak[8:]
+            # Clean output: preprocess original (differentiable) then generate
+            '''pv_clean, grid_clean = qwen_preprocess_differentiable(x_orig01, processor)
 
-        # MODIFIED: compute the L2 difference between the ORIGINAL coeffs and
-        # each adversary's coeffs BEFORE doing the token-wise averaging (i.e.
-        # at the same stage where the code used to do "coeffs.mean(dim=1)").
-        # We square the elementwise difference, apply the exact same
-        # ".mean(dim=1)" reduction the helper functions used to apply to
-        # "coeffs" itself, then sqrt to get an (RMS-style) L2 distance.
-        # This keeps every downstream shape identical to before, so the
-        # existing sample-averaging / plotting code below needs no changes.
-        DiffStrongThisSample = []
-        DiffWeakThisSample = []
-        for i in range(len(FlattenedAlignmentDistributionsOriginal)):
-            orig_c = FlattenedAlignmentDistributionsOriginal[i]
-            adv_c = FlattenedAlignmentDistributionsAdversary[i]
-            weak_c = FlattenedAlignmentDistributionsWeak[i]
+            print("\n=== CLEAN OUTPUT ===")
+            clean_text = run_generation_with_pixel_values(model, processor, template_inputs, pv_clean, grid_clean, max_new_tokens=MAX_NEW_TOKENS)
+            print(clean_text)'''
 
-            # MODIFIED vs Gemma (necessary fix): reduce over the TOKEN axis
-            # explicitly instead of a hard-coded dim=1. Unlike Gemma (fixed
-            # 896x896 canvas -> the same number of image tokens, hence the
-            # same total sequence length N, for every one of the 50 samples),
-            # Qwen2.5-VL uses native dynamic-resolution patching, so N (and
-            # therefore the language sequence length once the image tokens
-            # are spliced in) is different for every image. For the
-            # attention-head-style coeffs (shape num_heads, N, D_basis) the
-            # token axis is dim=1, which is what Gemma's original dim=1
-            # happened to reduce. For the plain-Linear coeffs (shape
-            # N, D_basis) the token axis is dim=0, NOT dim=1 -- Gemma's
-            # dim=1 reduced over D_basis there instead, which only "worked"
-            # because N was constant across samples in that script. Reducing
-            # over the true token axis makes every per-sample result a fixed,
-            # architecture-defined length (D_basis, or num_heads*D_basis)
-            # that no longer depends on how many tokens a given image
-            # produced, so the cross-sample torch.stack(...) below is valid
-            # regardless of each image's resolution / sequence length.
-            token_dim = 0 if orig_c.dim() == 2 else 1
+            if device.type == "cuda":
+                torch.cuda.empty_cache()
 
-            diffStrong = (orig_c - adv_c).pow(2).mean(dim=token_dim).sqrt().flatten()
-            diffWeak = (orig_c - weak_c).pow(2).mean(dim=token_dim).sqrt().flatten()
-
-            DiffStrongThisSample.append(diffStrong)
-            DiffWeakThisSample.append(diffWeak)
-
-        AggregationOverFlattenedAlignmentDistributionsOriginal.append(DiffWeakThisSample)
-        AggregationFlattenedAlignmentDistributionsAdversary.append(DiffStrongThisSample)
-
-        '''for i in range(len(FlattenedAlignmentDistributionsOriginal)):
-            print("FlattenedAlignmentDistributionsOriginal[i].shape", FlattenedAlignmentDistributionsOriginal[i].shape)'''
-
-
-        averagedAggregationOverFlattenedAlignmentDistributionsOriginal = [
-            torch.stack(elements).mean(dim=0)
-            for elements in zip(*AggregationOverFlattenedAlignmentDistributionsOriginal)
-        ]
-
-        averagedAggregationFlattenedAlignmentDistributionsAdversary = [
-            torch.stack(elements).mean(dim=0)
-            for elements in zip(*AggregationFlattenedAlignmentDistributionsAdversary)
-        ]
-
-
-
-        averagedAggregationOverFlattenedAlignmentDistributionsOriginalSTD = [
-            torch.stack(elements).std(dim=0)
-            for elements in zip(*AggregationOverFlattenedAlignmentDistributionsOriginal)
-        ]
-
-        averagedAggregationFlattenedAlignmentDistributionsAdversarySTD = [
-            torch.stack(elements).std(dim=0)
-            for elements in zip(*AggregationFlattenedAlignmentDistributionsAdversary)
-        ]
-
-
-    for i in range(len(averagedAggregationOverFlattenedAlignmentDistributionsOriginal)):
-            print("FlattenedAlignmentDistributionsAdversary[i].shape", averagedAggregationFlattenedAlignmentDistributionsAdversary[i].shape)
-            print("FlattenedAlignmentDistributionsOriginal[i].shape", averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].shape)
-
-            # MODIFIED: these now hold L2-distance values (weak-vs-orig, and
-            # strong-vs-orig), not raw alignment coefficients.
-            weak = averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].detach().to(torch.float32).cpu().numpy()
-            strong = averagedAggregationFlattenedAlignmentDistributionsAdversary[i].detach().to(torch.float32).cpu().numpy()
-
-            weak = (weak)
-            strong = (strong)
-
-            L = len(weak)
-            x = np.arange(L)
-
-            label = point_labels[i].replace("\n", " ")
-
-            fig, ax = plt.subplots(figsize=(10, 3.5))
-
-            # Strong (trained) adversary drawn first, weak (gaussian) adversary
-            # drawn second so both are visible where they overlap (transparent bars).
-            ax.bar(x, strong, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Strong Adversary (Trained) vs Original", zorder=2)
-            ax.bar(x, weak, width=1.0, color="blue", edgecolor="none", alpha=0.6, label="Weak Adversary (Gaussian) vs Original", zorder=1)
-
-            ax.set_title(f"{label} — L2 Distance: Weak vs Strong Adversary")
-            ax.set_xlabel("<- top singular vector   |   bottom singular vector ->")
-            ax.set_ylabel("L2 Distance")
-            ax.legend()
-
-            plt.tight_layout()
-
-            save_dir = f"qwen/OverlapDistancesAvgSSGRA"
-
-            os.makedirs(save_dir, exist_ok=True)
-            save_path = os.path.join(
-                save_dir,
-                f"Bar_{label.replace(' ', '_')}_attackSample_{attackSample}_attackMode_{attackMode}_LanLayerTrack_{LanLayerTrack})_VisionLayerTrack_{VisionLayerTrack}.png"
+            # MODIFIED vs Gemma: load the SAME perturbation naming convention
+            # used by qwen/QwenUntargeted_BSA_inference.py (the file that
+            # already loads/replays the 50-sample BSA perturbations for
+            # Qwen2.5-VL). Gemma's examiner used a much more elaborate
+            # "saa_BSAexp"-specific filename (towardsNull/whichMLP/
+            # balancingAlpha) that has no Qwen counterpart -- the Qwen BSA
+            # trainer (qwen/QwenUntargeted_BSA.py) never produced files with
+            # that naming scheme.
+            adv_noise_path = (
+                f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
+                f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_.pt"
             )
-            plt.savefig(save_path, dpi=300, bbox_inches="tight")
-            plt.show()
-            plt.close()
-            print(f"Saved: {save_path}")
 
-            # ADDED: log how far apart the weak (gaussian) and strong (trained)
-            # adversary L2-distance curves are, per layer/point, so runs across
-            # many LanLayerTrack/VisionLayerTrack values (see the sweep at the
-            # top of this file) can be compared to spot which layer shows the
-            # largest weak-vs-strong gap (a proxy for adversarial vulnerability).
-            weak_vs_strong_l2 = float(np.linalg.norm(strong - weak))
-            csv_path = os.path.join(save_dir, "weak_vs_strong_l2_summary.csv")
-            write_header = not os.path.exists(csv_path)
-            with open(csv_path, "a", newline="") as csv_f:
-                csv_writer = csv.writer(csv_f)
-                if write_header:
-                    csv_writer.writerow([
-                        "LanLayerTrack", "VisionLayerTrack", "attackMode",
-                        "point_label", "weak_vs_strong_l2_distance"
-                    ])
-                csv_writer.writerow([
-                    LanLayerTrack, VisionLayerTrack, attackMode,
-                    label, weak_vs_strong_l2
-                ])
-            print(f"Logged weak-vs-strong L2 distance ({weak_vs_strong_l2:.6f}) to: {csv_path}")
+            best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype)
 
-
-
-            weak_std = averagedAggregationOverFlattenedAlignmentDistributionsOriginalSTD[i].detach().to(torch.float32).cpu().numpy()
-            strong_std = averagedAggregationFlattenedAlignmentDistributionsAdversarySTD[i].detach().to(torch.float32).cpu().numpy()
-            #print("weak_std", weak_std)
-            #print("strong_std", strong_std)
-
-            fig, ax = plt.subplots(figsize=(10, 3.5))
-
-            #ax.bar(x, strong, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Strong Adversary (Trained) vs Original", zorder=2)
-            #ax.bar(x, weak, width=1.0, color="blue", edgecolor="none", alpha=0.6, label="Weak Adversary (Gaussian) vs Original", zorder=1)
-
-            ax.fill_between(x, weak - weak_std, weak + weak_std, color="blue", alpha=0.35, linewidth=0, zorder=2.1)
-            ax.plot(x, weak, color="blue", linewidth=0.6, zorder=2.2)
-
-            ax.fill_between(x, strong - strong_std, strong + strong_std, color="red", alpha=0.35, linewidth=0, zorder=2.3)
-            ax.plot(x, strong, color="red", linewidth=0.6, zorder=2.4)
-
-            ax.set_title(f"{label} — L2 Distance: Weak vs Strong Adversary (Mean ± STD)")
-            ax.set_xlabel("<- top singular vector   |   bottom singular vector ->")
-            ax.set_ylabel("L2 Distance")
-            ax.legend()
-
-            plt.tight_layout()
-
-            save_dirBands = f"qwen/OverlapDistancesAvgStdBandsSSGRA"
-            os.makedirs(save_dirBands, exist_ok=True)
-            save_pathBands = os.path.join(
-                save_dirBands,
-                f"Bar_{label.replace(' ', '_')}_attackSample_{attackSample}_attackMode_{attackMode}_LanLayerTrack_{LanLayerTrack})_VisionLayerTrack_{VisionLayerTrack}.png"
+            x_adv01, best_pert, RightSingularInputAlignmentAgainstAdversary, FlattenedAlignmentDistributionsAdversary = adam_attack_original_space(
+                model=model,
+                processor=processor,
+                template_inputs=template_inputs,
+                x_orig01=x_orig01,
+                attck_type=attck_type,
+                num_steps=num_steps,
+                lr=lr,
+                epsilon=epsilon,
+                device=device,
+                #save_conv_path=conv_path,
+                AttackStartLayer = AttackStartLayer,
+                numLayerstAtAtime = numLayerstAtAtime,
+                allTopRightSingularVectors = allTopRightSingularVectors,
+                best_delta = best_delta
             )
-            plt.savefig(save_pathBands, dpi=300, bbox_inches="tight")
-            plt.close(fig)
-            print(f"Saved: {save_pathBands}")
+            if attackMode == "vis":
+                RightSingularInputAlignmentAgainstAdversary = RightSingularInputAlignmentAgainstAdversary[:7]
+                FlattenedAlignmentDistributionsAdversary = FlattenedAlignmentDistributionsAdversary[:7]
 
+            else:
+                RightSingularInputAlignmentAgainstAdversary = RightSingularInputAlignmentAgainstAdversary[8:]
+                FlattenedAlignmentDistributionsAdversary = FlattenedAlignmentDistributionsAdversary[8:]
+
+            #print("FlattenedAlignmentDistributionsAdversary", FlattenedAlignmentDistributionsAdversary)
+            #FlattenedAlignmentDistributionsAdversary = np.array(FlattenedAlignmentDistributionsAdversary.item())
+
+
+            #for i in range(len(FlattenedAlignmentDistributionsAdversary)):
+                #print("FlattenedAlignmentDistributionsAdversary[i].shape", FlattenedAlignmentDistributionsAdversary[i].shape)
+
+            final = RightSingularInputAlignmentAgainstAdversary
+            PostAttackAlignments.append(RightSingularInputAlignmentAgainstAdversary)
+            #print("final", final)
+
+            #------------------------------------------------------------------------------------------------------------------------------------------------------------------
+            x_adv01, best_pert, RightSingularInputAlignmentAgainstOriginal, FlattenedAlignmentDistributionsOriginal = adam_attack_original_space(
+                model=model,
+                processor=processor,
+                template_inputs=template_inputs,
+                x_orig01=x_orig01,
+                attck_type=attck_type,
+                num_steps=num_steps,
+                lr=lr,
+                epsilon=epsilon,
+                device=device,
+                #save_conv_path=conv_path,
+                AttackStartLayer = AttackStartLayer,
+                numLayerstAtAtime = numLayerstAtAtime,
+                allTopRightSingularVectors = allTopRightSingularVectors,
+                best_delta = best_delta*0
+            )
+
+            if attackMode == "vis":
+                RightSingularInputAlignmentAgainstOriginal = RightSingularInputAlignmentAgainstOriginal[:7]
+                FlattenedAlignmentDistributionsOriginal = FlattenedAlignmentDistributionsOriginal[:7]
+
+            else:
+                RightSingularInputAlignmentAgainstOriginal = RightSingularInputAlignmentAgainstOriginal[8:]
+                FlattenedAlignmentDistributionsOriginal = FlattenedAlignmentDistributionsOriginal[8:]
+
+
+                #print("len(FlattenedAlignmentDistributionsOriginal)", len(FlattenedAlignmentDistributionsOriginal))
+
+            AggregationOverFlattenedAlignmentDistributionsOriginal.append(FlattenedAlignmentDistributionsOriginal)
+            AggregationFlattenedAlignmentDistributionsAdversary.append(FlattenedAlignmentDistributionsAdversary)
+
+            '''for i in range(len(FlattenedAlignmentDistributionsOriginal)):
+                print("FlattenedAlignmentDistributionsOriginal[i].shape", FlattenedAlignmentDistributionsOriginal[i].shape)'''
+
+
+            averagedAggregationOverFlattenedAlignmentDistributionsOriginal = [
+                torch.stack(elements).mean(dim=0)
+                for elements in zip(*AggregationOverFlattenedAlignmentDistributionsOriginal)
+            ]
+
+            averagedAggregationFlattenedAlignmentDistributionsAdversary = [
+                torch.stack(elements).mean(dim=0)
+                for elements in zip(*AggregationFlattenedAlignmentDistributionsAdversary)
+            ]
+
+
+            #print(len(averagedAggregationOverFlattenedAlignmentDistributionsOriginal))
+            #for t in averagedAggregationOverFlattenedAlignmentDistributionsOriginal:
+                #print("t.shape", t.shape)
+
+            #print(len(averagedAggregationFlattenedAlignmentDistributionsAdversary))
+            #for t in averagedAggregationFlattenedAlignmentDistributionsAdversary:
+                #print("t_2.shape", t.shape)
+
+
+            #print(f"done for sample {attackSample}" )
+        #print("len(AggregationOverFlattenedAlignmentDistributionsOriginal)", len(AggregationOverFlattenedAlignmentDistributionsOriginal))
+
+        '''for i in range(len(averagedAggregationOverFlattenedAlignmentDistributionsOriginal)):
+            #print("FlattenedAlignmentDistributionsAdversary[i].shape", averagedAggregationFlattenedAlignmentDistributionsAdversary[i].shape)
+            #print("FlattenedAlignmentDistributionsOriginal[i].shape", averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].shape)
+
+
+            print("attackMode", attackMode)
+            print("VisionLayerTrack", VisionLayerTrack)
+            print("LanLayerTrack", LanLayerTrack)
+            orig = averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].detach().to(torch.float32).cpu().numpy()
+            adv = averagedAggregationFlattenedAlignmentDistributionsAdversary[i].detach().to(torch.float32).cpu().numpy()
+
+
+            l2 = np.linalg.norm(adv - orig)
+            mad = np.mean(np.abs(adv - orig))
+            max_change = np.max(np.abs(adv - orig))
+
+            print(f"L2 distance          : {l2:.6f}")
+
+            print(f"Mean Abs Difference  : {mad:.6f}")
+
+            print(f"Maximum Change       : {max_change:.6f}")
+
+            com_orig, com_adv, shift = center_of_mass_shift(orig, adv)
+
+            print(f"COM Shift : {shift:.3f}")
+
+            mean_orig, mean_adv, signShift = mean_alignment_shift(orig, adv)
+            print(f"Sign Shift : {signShift:.10f}")
+            print()'''
+
+
+
+
+
+        for i in range(len(averagedAggregationOverFlattenedAlignmentDistributionsOriginal)):
+
+            #print("attackMode:", attackMode)
+            #print("VisionLayerTrack:", VisionLayerTrack)
+            #print("LanLayerTrack:", LanLayerTrack)
+
+            orig = (
+                averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i]
+                .detach()
+                .to(torch.float32)
+                .cpu()
+                .numpy()
+            )
+
+            adv = (
+                averagedAggregationFlattenedAlignmentDistributionsAdversary[i]
+                .detach()
+                .to(torch.float32)
+                .cpu()
+                .numpy()
+            )
+
+            # ---------------- Metrics ---------------- #
+
+            l2 = np.linalg.norm(adv - orig)
+            mad = np.mean(np.abs(adv - orig))
+            max_change = np.max(np.abs(adv - orig))
+
+            com_orig, com_adv, com_shift = center_of_mass_shift(orig, adv)
+
+            mean_orig, mean_adv, sign_shift = mean_alignment_shift(orig, adv)
+
+            # ---------------- Print ---------------- #
+
+            #print(f"L2 Distance            : {l2:.6f}")
+            #print(f"Mean Abs Difference    : {mad:.6f}")
+            #print(f"Maximum Change         : {max_change:.6f}")
+            #print(f"COM Shift              : {com_shift:.6f}")
+            #print(f"Sign Shift             : {sign_shift:.10f}")
+            #print()
+
+            # ---------------- Save row ---------------- #
+
+            row = pd.DataFrame([{
+                "AttackMode": attackMode,
+                "VisionLayerTrack": VisionLayerTrack,
+                "LanLayerTrack": LanLayerTrack,
+                "HistogramIndex": i,
+                "L2 Distance": l2,
+                "Mean Absolute Difference": mad,
+                "Maximum Change": max_change,
+                "COM Shift": com_shift,
+                "Sign Shift": sign_shift
+            }])
+
+            row.to_csv(
+                csv_path,
+                mode="a",
+                header=write_header,
+                index=False
+            )
+
+            # Only write the header once
+            write_header = False
 
 
 if __name__ == "__main__":

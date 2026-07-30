@@ -1418,24 +1418,23 @@ def main():
         ]
 
 
-        #print(len(averagedAggregationOverFlattenedAlignmentDistributionsOriginal))
-        #for t in averagedAggregationOverFlattenedAlignmentDistributionsOriginal:
-            #print("t.shape", t.shape)
 
-        #print(len(averagedAggregationFlattenedAlignmentDistributionsAdversary))
-        #for t in averagedAggregationFlattenedAlignmentDistributionsAdversary:
-            #print("t_2.shape", t.shape)
+        averagedAggregationOverFlattenedAlignmentDistributionsOriginalSTD = [
+            torch.stack(elements).std(dim=0)
+            for elements in zip(*AggregationOverFlattenedAlignmentDistributionsOriginal)
+        ]
+
+        averagedAggregationFlattenedAlignmentDistributionsAdversarySTD = [
+            torch.stack(elements).std(dim=0)
+            for elements in zip(*AggregationFlattenedAlignmentDistributionsAdversary)
+        ]
 
 
-        #print(f"done for sample {attackSample}" )
-    #print("len(AggregationOverFlattenedAlignmentDistributionsOriginal)", len(AggregationOverFlattenedAlignmentDistributionsOriginal))
 
     for i in range(len(averagedAggregationOverFlattenedAlignmentDistributionsOriginal)):
             print("FlattenedAlignmentDistributionsAdversary[i].shape", averagedAggregationFlattenedAlignmentDistributionsAdversary[i].shape)
             print("FlattenedAlignmentDistributionsOriginal[i].shape", averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].shape)
 
-            # MODIFIED: these now hold L2-distance values (weak-vs-orig, and
-            # strong-vs-orig), not raw alignment coefficients.
             weak = averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].detach().to(torch.float32).cpu().numpy()
             strong = averagedAggregationFlattenedAlignmentDistributionsAdversary[i].detach().to(torch.float32).cpu().numpy()
 
@@ -1449,8 +1448,6 @@ def main():
 
             fig, ax = plt.subplots(figsize=(10, 3.5))
 
-            # Strong (trained) adversary drawn first, weak (gaussian) adversary
-            # drawn second so both are visible where they overlap (transparent bars).
             ax.bar(x, strong, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Strong Adversary (Trained) vs Original", zorder=2)
             ax.bar(x, weak, width=1.0, color="blue", edgecolor="none", alpha=0.6, label="Weak Adversary (Gaussian) vs Original", zorder=1)
 
@@ -1473,11 +1470,6 @@ def main():
             plt.close()
             print(f"Saved: {save_path}")
 
-            # ADDED: log how far apart the weak (gaussian) and strong (trained)
-            # adversary L2-distance curves are, per layer/point, so runs across
-            # many LanLayerTrack/VisionLayerTrack values (see the sweep at the
-            # top of this file) can be compared to spot which layer shows the
-            # largest weak-vs-strong gap (a proxy for adversarial vulnerability).
             weak_vs_strong_l2 = float(np.linalg.norm(strong - weak))
             csv_path = os.path.join(save_dir, "weak_vs_strong_l2_summary.csv")
             write_header = not os.path.exists(csv_path)
@@ -1493,6 +1485,44 @@ def main():
                     label, weak_vs_strong_l2
                 ])
             print(f"Logged weak-vs-strong L2 distance ({weak_vs_strong_l2:.6f}) to: {csv_path}")
+
+
+
+
+
+            weak_std = averagedAggregationOverFlattenedAlignmentDistributionsOriginalSTD[i].detach().to(torch.float32).cpu().numpy()
+            strong_std = averagedAggregationFlattenedAlignmentDistributionsAdversarySTD[i].detach().to(torch.float32).cpu().numpy()
+
+            #print("weak_std", weak_std)
+            #print("strong_std", strong_std)
+
+            fig, ax = plt.subplots(figsize=(10, 3.5))
+
+            #ax.bar(x, strong, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Strong Adversary (Trained) vs Original", zorder=2)
+            #ax.bar(x, weak, width=1.0, color="blue", edgecolor="none", alpha=0.6, label="Weak Adversary (Gaussian) vs Original", zorder=1)
+
+            ax.fill_between(x, weak - weak_std, weak + weak_std, color="blue", alpha=0.35, linewidth=0, zorder=2.1)
+            ax.plot(x, weak, color="blue", linewidth=0.6, zorder=2.2)
+
+            ax.fill_between(x, strong - strong_std, strong + strong_std, color="red", alpha=0.35, linewidth=0, zorder=2.3)
+            ax.plot(x, strong, color="red", linewidth=0.6, zorder=2.4)
+
+            ax.set_title(f"{label} — L2 Distance: Weak vs Strong Adversary (Mean ± STD)")
+            ax.set_xlabel("<- top singular vector   |   bottom singular vector ->")
+            ax.set_ylabel("L2 Distance")
+            ax.legend()
+
+            plt.tight_layout()
+
+            save_dirBands = f"qwen/OverlapDistancesAvgStdBands"
+            os.makedirs(save_dirBands, exist_ok=True)
+            save_pathBands = os.path.join(
+                save_dirBands,
+                f"Bar_{label.replace(' ', '_')}_attackSample_{attackSample}_attackMode_{attackMode}_LanLayerTrack_{LanLayerTrack})_VisionLayerTrack_{VisionLayerTrack}.png"
+            )
+            plt.savefig(save_pathBands, dpi=300, bbox_inches="tight")
+            plt.close(fig)
+            print(f"Saved: {save_pathBands}")
 
 
 if __name__ == "__main__":

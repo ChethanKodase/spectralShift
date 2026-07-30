@@ -6,3 +6,9 @@ qwen/outputsStorageImagenet
 qwen/__pycache__
 qwen/OverlapDistancesAvg/
 qwen/OverlapDistancesAvgSSGRA/
+qwen/OverlapDistancesAvgStdBands/
+qwen/OverlapDistancesAvgStdBandsSSGRA/
+qwen/OverlapHistoGramsAvg/
+qwen/OverlapHistoGramsAvgSSGRA/
+qwen/QuantitativeAlignmentShift/
+qwen/QuantitativeAlignmentShiftSSGRA/

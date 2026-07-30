@@ -8,7 +8,7 @@ cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 for StudyLayer in $(seq 0 27); do
-    python qwen/Qwen2p5FullDistancesOverlapSSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack $StudyLayer --kthSingVec -10 --attackMode lan
+    python qwen/Qwen2p5FullHistogramOverlapSSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack $StudyLayer --kthSingVec -10 --attackMode lan
 done
 
 
@@ -21,12 +21,8 @@ cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 for StudyLayer in $(seq 0 31); do
-    python qwen/Qwen2p5FullDistancesOverlapSSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack $StudyLayer --LanLayerTrack 0 --kthSingVec 10 --attackMode vis
+    python qwen/Qwen2p5FullHistogramOverlapSSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack $StudyLayer --LanLayerTrack 0 --kthSingVec 10 --attackMode vis
 done
-
-
-
-
 
 '''
 
@@ -41,7 +37,6 @@ import os
 os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 
 import sys
-import csv
 import argparse
 import random
 import numpy as np
@@ -344,11 +339,19 @@ def getMeanAlignmentWithTopRightSingularVector(InputToLayer, topRightSingularVec
     # Mean across tokens
     mean_energy = per_token_energy.mean().item()
 
-    # MODIFIED: return the raw (un-reduced) coeffs instead of coeffs.mean(dim=1).
-    # We need the pre-reduction coeffs so that, at the call site, we can compute
-    # an L2 difference against another (original/weak/strong) coeffs tensor
-    # BEFORE doing the token-wise averaging.
-    return mean_energy, coeffs
+    # MODIFIED vs Gemma (necessary fix): average over the TOKEN axis, which
+    # is dim=0 for this (N, k) coeffs tensor, not dim=1. Gemma's original
+    # `coeffs.mean(dim=1)` happened to average over k (the singular-vector
+    # index) here, which "worked" only because every one of Gemma's 50
+    # samples produces the exact same fixed 896x896 canvas and therefore the
+    # same N. Qwen2.5-VL uses native dynamic-resolution patching, so N
+    # (vision tokens, and the total multimodal sequence length for language
+    # hooks) is different for every image. Averaging over the true token
+    # axis (dim=0) makes the returned distribution a fixed, architecture-
+    # defined length (k = in_dim of this weight matrix) that no longer
+    # depends on how many tokens a given image produced, so the cross-sample
+    # torch.stack(...) later in main() is valid regardless of resolution.
+    return mean_energy, coeffs.mean(dim=0)
 
 def getMeanAlignmentWithTopLeftSingularVector(InputToLayer, topRightSingularVector):
     v = topRightSingularVector.to(InputToLayer)
@@ -385,14 +388,11 @@ def getMeanAlignmentWithAttentionHeadTopRightSingularVector(InputToLayer, topRig
     #dots = H_hat @ V_hat.T               # (N, num_heads)
     #mean_abs_value = dots.abs().mean().item()
 
-    # MODIFIED: return the raw (un-reduced) coeffs (shape h,n,k) instead of
-    # coeffs.mean(dim=1). Same reasoning as above: we need the pre-reduction
-    # tensor to compute an L2 difference against another coeffs tensor first.
-    # NOTE: this helper is fully generic in num_heads (it just reads V's own
-    # shape), so it works unchanged for Qwen's vision heads (MHA, 16 heads)
-    # AND for the language-model query heads (28) as well as the GQA
-    # key/value heads (4) -- no modification needed here.
-    return mean_energy_all, coeffs
+    # NOTE: unlike the plain-Linear helper above, `dim=1` here already IS the
+    # token axis (coeffs shape is (num_heads, N, k)), so this average over
+    # tokens is correct as-is and does not depend on N -- no change needed
+    # for Qwen's variable per-image token count.
+    return mean_energy_all, coeffs.mean(dim=1)
 
 
 def getMeanAlignmentWithAttentionHeadTopLeftSingularVector(OutputOfLayer, num_headsT, topLeftSingularVector):
@@ -840,12 +840,7 @@ def adam_attack_original_space(
     FlattenedAlignmentDistributions = []
     for i in range(len(AlignmentDistributions)):
         #print("AlignmentDistributions[i].shape", AlignmentDistributions[i].flatten().shape)
-        # MODIFIED: kept un-flattened (raw coeffs, shape (N,k) or (h,n,k)) instead
-        # of AlignmentDistributions[i].flatten(). We need the original
-        # (pre-reduction) shape at the call site to compute an L2 difference
-        # against another adversary's coeffs BEFORE doing the token-wise
-        # averaging that used to happen inside the helper functions above.
-        FlattenedAlignmentDistributions.append(AlignmentDistributions[i])
+        FlattenedAlignmentDistributions.append(AlignmentDistributions[i].flatten())
     #RightSingularInputAlignmentWhole.append(RightSingularInputAlignment)
 
 
@@ -1261,12 +1256,11 @@ def main():
         # filename (towardsNull/whichMLP/balancingAlpha) that has no Qwen
         # counterpart -- the Qwen BSA trainer (qwen/QwenUntargeted_BSA.py)
         # never produced files with that naming scheme.
-        '''adv_noise_path = (
-            f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
-            f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_.pt"
-        )'''
+        #adv_noise_path = (
+        #    f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
+        #    f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_.pt"
+        #)
 
-    # python qwen/QwenUntargted_SSGRA.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --towardsNull 0.5 --whichMLP gate_proj --whichMLPVis gate_proj --chosenLanLayers 2 --chosenVisLayers 0 1 2 4 5 6 7 8 9 14 24
 
         towardsNull = 0.5
         whichMLP = "gate_proj"
@@ -1280,14 +1274,8 @@ def main():
             f"num_steps_{num_steps}_towardsNull_{towardsNull}_{whichMLP}_{whichMLPVis}_{chosenLanLayers}_{chosenVisLayers}.pt"
         )
 
-        best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype)
 
-        # MODIFIED: build a "weak adversary" - gaussian noise scaled to the same
-        # L_inf epsilon bound as the trained ("strong") adversary. The clamping
-        # inside adam_attack_original_space (x_orig01 +/- epsilon) applies to
-        # whatever delta is passed in, so this receives the exact same L_inf
-        # bound treatment as best_delta.
-        weak_delta = torch.randn_like(best_delta) * epsilon
+        best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype)
 
         x_adv01, best_pert, RightSingularInputAlignmentAgainstAdversary, FlattenedAlignmentDistributionsAdversary = adam_attack_original_space(
             model=model,
@@ -1353,73 +1341,8 @@ def main():
 
             #print("len(FlattenedAlignmentDistributionsOriginal)", len(FlattenedAlignmentDistributionsOriginal))
 
-        # MODIFIED: third pass - weak (gaussian, same L_inf bound) adversary.
-        x_adv01, best_pert, RightSingularInputAlignmentAgainstWeak, FlattenedAlignmentDistributionsWeak = adam_attack_original_space(
-            model=model,
-            processor=processor,
-            template_inputs=template_inputs,
-            x_orig01=x_orig01,
-            attck_type=attck_type,
-            num_steps=num_steps,
-            lr=lr,
-            epsilon=epsilon,
-            device=device,
-            AttackStartLayer = AttackStartLayer,
-            numLayerstAtAtime = numLayerstAtAtime,
-            allTopRightSingularVectors = allTopRightSingularVectors,
-            best_delta = weak_delta
-        )
-
-        if attackMode == "vis":
-            RightSingularInputAlignmentAgainstWeak = RightSingularInputAlignmentAgainstWeak[:7]
-            FlattenedAlignmentDistributionsWeak = FlattenedAlignmentDistributionsWeak[:7]
-        else:
-            RightSingularInputAlignmentAgainstWeak = RightSingularInputAlignmentAgainstWeak[8:]
-            FlattenedAlignmentDistributionsWeak = FlattenedAlignmentDistributionsWeak[8:]
-
-        # MODIFIED: compute the L2 difference between the ORIGINAL coeffs and
-        # each adversary's coeffs BEFORE doing the token-wise averaging (i.e.
-        # at the same stage where the code used to do "coeffs.mean(dim=1)").
-        # We square the elementwise difference, apply the exact same
-        # ".mean(dim=1)" reduction the helper functions used to apply to
-        # "coeffs" itself, then sqrt to get an (RMS-style) L2 distance.
-        # This keeps every downstream shape identical to before, so the
-        # existing sample-averaging / plotting code below needs no changes.
-        DiffStrongThisSample = []
-        DiffWeakThisSample = []
-        for i in range(len(FlattenedAlignmentDistributionsOriginal)):
-            orig_c = FlattenedAlignmentDistributionsOriginal[i]
-            adv_c = FlattenedAlignmentDistributionsAdversary[i]
-            weak_c = FlattenedAlignmentDistributionsWeak[i]
-
-            # MODIFIED vs Gemma (necessary fix): reduce over the TOKEN axis
-            # explicitly instead of a hard-coded dim=1. Unlike Gemma (fixed
-            # 896x896 canvas -> the same number of image tokens, hence the
-            # same total sequence length N, for every one of the 50 samples),
-            # Qwen2.5-VL uses native dynamic-resolution patching, so N (and
-            # therefore the language sequence length once the image tokens
-            # are spliced in) is different for every image. For the
-            # attention-head-style coeffs (shape num_heads, N, D_basis) the
-            # token axis is dim=1, which is what Gemma's original dim=1
-            # happened to reduce. For the plain-Linear coeffs (shape
-            # N, D_basis) the token axis is dim=0, NOT dim=1 -- Gemma's
-            # dim=1 reduced over D_basis there instead, which only "worked"
-            # because N was constant across samples in that script. Reducing
-            # over the true token axis makes every per-sample result a fixed,
-            # architecture-defined length (D_basis, or num_heads*D_basis)
-            # that no longer depends on how many tokens a given image
-            # produced, so the cross-sample torch.stack(...) below is valid
-            # regardless of each image's resolution / sequence length.
-            token_dim = 0 if orig_c.dim() == 2 else 1
-
-            diffStrong = (orig_c - adv_c).pow(2).mean(dim=token_dim).sqrt().flatten()
-            diffWeak = (orig_c - weak_c).pow(2).mean(dim=token_dim).sqrt().flatten()
-
-            DiffStrongThisSample.append(diffStrong)
-            DiffWeakThisSample.append(diffWeak)
-
-        AggregationOverFlattenedAlignmentDistributionsOriginal.append(DiffWeakThisSample)
-        AggregationFlattenedAlignmentDistributionsAdversary.append(DiffStrongThisSample)
+        AggregationOverFlattenedAlignmentDistributionsOriginal.append(FlattenedAlignmentDistributionsOriginal)
+        AggregationFlattenedAlignmentDistributionsAdversary.append(FlattenedAlignmentDistributionsAdversary)
 
         '''for i in range(len(FlattenedAlignmentDistributionsOriginal)):
             print("FlattenedAlignmentDistributionsOriginal[i].shape", FlattenedAlignmentDistributionsOriginal[i].shape)'''
@@ -1436,51 +1359,47 @@ def main():
         ]
 
 
+        #print(len(averagedAggregationOverFlattenedAlignmentDistributionsOriginal))
+        #for t in averagedAggregationOverFlattenedAlignmentDistributionsOriginal:
+            #print("t.shape", t.shape)
 
-        averagedAggregationOverFlattenedAlignmentDistributionsOriginalSTD = [
-            torch.stack(elements).std(dim=0)
-            for elements in zip(*AggregationOverFlattenedAlignmentDistributionsOriginal)
-        ]
+        #print(len(averagedAggregationFlattenedAlignmentDistributionsAdversary))
+        #for t in averagedAggregationFlattenedAlignmentDistributionsAdversary:
+            #print("t_2.shape", t.shape)
 
-        averagedAggregationFlattenedAlignmentDistributionsAdversarySTD = [
-            torch.stack(elements).std(dim=0)
-            for elements in zip(*AggregationFlattenedAlignmentDistributionsAdversary)
-        ]
 
+        #print(f"done for sample {attackSample}" )
+    #print("len(AggregationOverFlattenedAlignmentDistributionsOriginal)", len(AggregationOverFlattenedAlignmentDistributionsOriginal))
 
     for i in range(len(averagedAggregationOverFlattenedAlignmentDistributionsOriginal)):
             print("FlattenedAlignmentDistributionsAdversary[i].shape", averagedAggregationFlattenedAlignmentDistributionsAdversary[i].shape)
             print("FlattenedAlignmentDistributionsOriginal[i].shape", averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].shape)
 
-            # MODIFIED: these now hold L2-distance values (weak-vs-orig, and
-            # strong-vs-orig), not raw alignment coefficients.
-            weak = averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].detach().to(torch.float32).cpu().numpy()
-            strong = averagedAggregationFlattenedAlignmentDistributionsAdversary[i].detach().to(torch.float32).cpu().numpy()
+            orig = averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].detach().to(torch.float32).cpu().numpy()
+            adv = averagedAggregationFlattenedAlignmentDistributionsAdversary[i].detach().to(torch.float32).cpu().numpy()
 
-            weak = (weak)
-            strong = (strong)
+            orig = (orig)
+            adv = (adv)
 
-            L = len(weak)
+            L = len(orig)
             x = np.arange(L)
 
             label = point_labels[i].replace("\n", " ")
 
             fig, ax = plt.subplots(figsize=(10, 3.5))
 
-            # Strong (trained) adversary drawn first, weak (gaussian) adversary
-            # drawn second so both are visible where they overlap (transparent bars).
-            ax.bar(x, strong, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Strong Adversary (Trained) vs Original", zorder=2)
-            ax.bar(x, weak, width=1.0, color="blue", edgecolor="none", alpha=0.6, label="Weak Adversary (Gaussian) vs Original", zorder=1)
+            # Adversarial drawn first (background), Original drawn second so it overlaps on top.
+            ax.bar(x, adv, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Attacked", zorder=1)
+            ax.bar(x, orig, width=1.0, color="green", edgecolor="none", alpha=0.6, label="Original", zorder=2)
 
-            ax.set_title(f"{label} — L2 Distance: Weak vs Strong Adversary")
+            ax.set_title(f"{label} — Original over Attacked")
             ax.set_xlabel("<- top singular vector   |   bottom singular vector ->")
-            ax.set_ylabel("L2 Distance")
+            ax.set_ylabel("Alignment")
             ax.legend()
 
             plt.tight_layout()
 
-            save_dir = f"qwen/OverlapDistancesAvgSSGRA"
-
+            save_dir = f"qwen/OverlapHistoGramsAvgSSGRA"
             os.makedirs(save_dir, exist_ok=True)
             save_path = os.path.join(
                 save_dir,
@@ -1490,63 +1409,6 @@ def main():
             plt.show()
             plt.close()
             print(f"Saved: {save_path}")
-
-            # ADDED: log how far apart the weak (gaussian) and strong (trained)
-            # adversary L2-distance curves are, per layer/point, so runs across
-            # many LanLayerTrack/VisionLayerTrack values (see the sweep at the
-            # top of this file) can be compared to spot which layer shows the
-            # largest weak-vs-strong gap (a proxy for adversarial vulnerability).
-            weak_vs_strong_l2 = float(np.linalg.norm(strong - weak))
-            csv_path = os.path.join(save_dir, "weak_vs_strong_l2_summary.csv")
-            write_header = not os.path.exists(csv_path)
-            with open(csv_path, "a", newline="") as csv_f:
-                csv_writer = csv.writer(csv_f)
-                if write_header:
-                    csv_writer.writerow([
-                        "LanLayerTrack", "VisionLayerTrack", "attackMode",
-                        "point_label", "weak_vs_strong_l2_distance"
-                    ])
-                csv_writer.writerow([
-                    LanLayerTrack, VisionLayerTrack, attackMode,
-                    label, weak_vs_strong_l2
-                ])
-            print(f"Logged weak-vs-strong L2 distance ({weak_vs_strong_l2:.6f}) to: {csv_path}")
-
-
-
-            weak_std = averagedAggregationOverFlattenedAlignmentDistributionsOriginalSTD[i].detach().to(torch.float32).cpu().numpy()
-            strong_std = averagedAggregationFlattenedAlignmentDistributionsAdversarySTD[i].detach().to(torch.float32).cpu().numpy()
-            #print("weak_std", weak_std)
-            #print("strong_std", strong_std)
-
-            fig, ax = plt.subplots(figsize=(10, 3.5))
-
-            #ax.bar(x, strong, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Strong Adversary (Trained) vs Original", zorder=2)
-            #ax.bar(x, weak, width=1.0, color="blue", edgecolor="none", alpha=0.6, label="Weak Adversary (Gaussian) vs Original", zorder=1)
-
-            ax.fill_between(x, weak - weak_std, weak + weak_std, color="blue", alpha=0.35, linewidth=0, zorder=2.1)
-            ax.plot(x, weak, color="blue", linewidth=0.6, zorder=2.2)
-
-            ax.fill_between(x, strong - strong_std, strong + strong_std, color="red", alpha=0.35, linewidth=0, zorder=2.3)
-            ax.plot(x, strong, color="red", linewidth=0.6, zorder=2.4)
-
-            ax.set_title(f"{label} — L2 Distance: Weak vs Strong Adversary (Mean ± STD)")
-            ax.set_xlabel("<- top singular vector   |   bottom singular vector ->")
-            ax.set_ylabel("L2 Distance")
-            ax.legend()
-
-            plt.tight_layout()
-
-            save_dirBands = f"qwen/OverlapDistancesAvgStdBandsSSGRA"
-            os.makedirs(save_dirBands, exist_ok=True)
-            save_pathBands = os.path.join(
-                save_dirBands,
-                f"Bar_{label.replace(' ', '_')}_attackSample_{attackSample}_attackMode_{attackMode}_LanLayerTrack_{LanLayerTrack})_VisionLayerTrack_{VisionLayerTrack}.png"
-            )
-            plt.savefig(save_pathBands, dpi=300, bbox_inches="tight")
-            plt.close(fig)
-            print(f"Saved: {save_pathBands}")
-
 
 
 if __name__ == "__main__":
