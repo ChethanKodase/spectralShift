@@ -5,48 +5,34 @@
 '''
 
 
-
-
 ---
 
-export CUDA_VISIBLE_DEVICES=7
+export CUDA_VISIBLE_DEVICES=5
 conda activate gemma3
 cd spectralShift
 for StudyLayer in $(seq 0 33); do
-    python gemma_attack/RealSpectralSubSpaceAlignmentPostAttackExaminerFullDistancesOverlap.py --attck_type saa_BSAexp --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack $StudyLayer --kthSingVec -10 --attackMode lan
+    python gemma_attack/RealSpectralSubSpaceAlignmentPostAttackExaminerFullHistogramOverlapABS.py --attck_type saa_BSAexp --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack $StudyLayer --kthSingVec -10 --attackMode lan
 done
 
 
 
 
-export CUDA_VISIBLE_DEVICES=6
+export CUDA_VISIBLE_DEVICES=4
 conda activate gemma3
 cd spectralShift
 for StudyLayer in $(seq 0 26); do
-    python gemma_attack/RealSpectralSubSpaceAlignmentPostAttackExaminerFullDistancesOverlap.py --attck_type saa_BSAexp --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack $StudyLayer --LanLayerTrack 0 --kthSingVec 10 --attackMode vis
+    python gemma_attack/RealSpectralSubSpaceAlignmentPostAttackExaminerFullHistogramOverlapABS.py --attck_type saa_BSAexp --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack $StudyLayer --LanLayerTrack 0 --kthSingVec 10 --attackMode vis
 done
 
 
-
-
-
-python gemma_attack/RealSpectralSubSpaceAlignmentPostAttackExaminerFullDistancesOverlap.py --attck_type saa_BSAexp --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack 1 --kthSingVec -10 --attackMode lan
-
-
-
-
-
-python gemma_attack/RealSpectralSubSpaceAlignmentPostAttackExaminerFullDistancesOverlap.py --attck_type saa_BSAexp --desired_norm_l_inf 0.005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack 0 --kthSingVec -10 --attackMode vis
 
 
 '''
 
 
 
-
 import os
 import sys
-import csv
 import argparse
 import random
 import numpy as np
@@ -92,7 +78,7 @@ def wasserstein_distance(tensor_a, tensor_b):
     tensor_a_flat = torch.flatten(tensor_a)
     tensor_b_flat = torch.flatten(tensor_b)
     tensor_a_sorted, _ = torch.sort(tensor_a_flat)
-    tensor_b_sorted, _ = torch.sort(tensor_b_flat)
+    tensor_b_sorted, _ = torch.sort(tensor_b_flat)    
     wasserstein_dist = torch.mean(torch.abs(tensor_a_sorted - tensor_b_sorted))
     return wasserstein_dist
 
@@ -280,12 +266,12 @@ def run_generation_with_pixel_values(model, processor, template_inputs, pixel_va
 def getMeanAlignmentWithTopRightSingularVector(InputToLayer, topRightSingularVector):
 
 
-    H = InputToLayer[0]
-    V = topRightSingularVector
+    H = InputToLayer[0]        
+    V = topRightSingularVector   
     V = V.to(H)
 
-    H_hat = F.normalize(H, dim=1)
-    V_hat = F.normalize(V, dim=1)
+    H_hat = F.normalize(H, dim=1)      
+    V_hat = F.normalize(V, dim=1)     
 
     coeffs = H_hat @ V_hat.T        # (N, k)
 
@@ -293,18 +279,14 @@ def getMeanAlignmentWithTopRightSingularVector(InputToLayer, topRightSingularVec
     per_token_energy = (coeffs ** 2).sum(dim=1)  # (N,)
 
     #print("coeffs.shape", coeffs.shape)
-    #print("coeffs.mean(dim=1).shape", coeffs.mean(dim=1).shape)
+    #print("abs(coeffs).mean(dim=1).shape", abs(coeffs).mean(dim=1).shape)
 
-    #coeffHIst = coeffs.mean(dim=1)
+    #coeffHIst = abs(coeffs).mean(dim=1)
 
     # Mean across tokens
     mean_energy = per_token_energy.mean().item()
 
-    # MODIFIED: return the raw (un-reduced) coeffs instead of coeffs.mean(dim=1).
-    # We need the pre-reduction coeffs so that, at the call site, we can compute
-    # an L2 difference against another (original/weak/strong) coeffs tensor
-    # BEFORE doing the token-wise averaging.
-    return mean_energy, coeffs
+    return mean_energy, abs(coeffs).mean(dim=1)
 
 def getMeanAlignmentWithTopLeftSingularVector(InputToLayer, topRightSingularVector):
     v = topRightSingularVector.to(InputToLayer)
@@ -330,7 +312,7 @@ def getMeanAlignmentWithAttentionHeadTopRightSingularVector(InputToLayer, topRig
     #print("H_hat.shape", H_hat.shape)
     #print("V_hat.shape", V_hat.shape)
 
-    coeffs = torch.einsum('nd,hkd->hnk', H_hat, V_hat) # this gave me the dot product between "all the bottom k singular vectors from all the heads on the weight matrix", and all the input tokens. Now I have so many dot product values 16 heads x 4096 tokens number of dot prducts executed and values stored.
+    coeffs = torch.einsum('nd,hkd->hnk', H_hat, V_hat) # this gave me the dot product between "all the bottom k singular vectors from all the heads on the weight matrix", and all the input tokens. Now I have so many dot product values 16 heads x 4096 tokens number of dot prducts executed and values stored. 
 
     #print("coeffs.shape", coeffs.shape)
     #now I will perform l2 norm of the dot products corresponding to all the nottom k singular vectors. That is nothing but squaring those singular vectors and adding. This equivalent to l2 norm , squaring,  adding, square rooting and then again squaring
@@ -340,13 +322,12 @@ def getMeanAlignmentWithAttentionHeadTopRightSingularVector(InputToLayer, topRig
     #dots = H_hat @ V_hat.T               # (4096, 16)
     #mean_abs_value = dots.abs().mean().item()
 
-    # MODIFIED: return the raw (un-reduced) coeffs (shape h,n,k) instead of
-    # coeffs.mean(dim=1). Same reasoning as above: we need the pre-reduction
-    # tensor to compute an L2 difference against another coeffs tensor first.
-    return mean_energy_all, coeffs
+    return mean_energy_all, abs(coeffs).mean(dim=1)
 
 
 '''
+
+
 
 def getMeanAlignmentWithAttentionHeadTopRightSingularVector(InputToLayer, topRightSingularVector):
 
@@ -513,7 +494,7 @@ def down_proj_pre_hook(module, inputs):
 DownLayer_outputs = {}
 def down_proj_forward_hook(module, inputs, output):
     DownLayer_outputs["down_out"] = output
-
+    
 #----------------------------------------------------------------------------------------
 
 def debug_hook(module, inputs, output):
@@ -573,7 +554,7 @@ def adam_attack_original_space(
             raise ValueError(
                 f"endPos ({endPos}) exceeds number of hidden states ({hiddStateLen})"
             )
-
+        
         #----------------------attention head hyper parameters extraction------------------------
         layer0 = model.vision_tower.vision_model.encoder.layers[0]
         num_heads = layer0.self_attn.num_heads
@@ -756,12 +737,7 @@ def adam_attack_original_space(
     FlattenedAlignmentDistributions = []
     for i in range(len(AlignmentDistributions)):
         #print("AlignmentDistributions[i].shape", AlignmentDistributions[i].flatten().shape)
-        # MODIFIED: kept un-flattened (raw coeffs, shape (N,k) or (h,n,k)) instead
-        # of AlignmentDistributions[i].flatten(). We need the original
-        # (pre-reduction) shape at the call site to compute an L2 difference
-        # against another adversary's coeffs BEFORE doing the token-wise
-        # averaging that used to happen inside the helper functions above.
-        FlattenedAlignmentDistributions.append(AlignmentDistributions[i])
+        FlattenedAlignmentDistributions.append(AlignmentDistributions[i].flatten())
     #RightSingularInputAlignmentWhole.append(RightSingularInputAlignment)
 
 
@@ -803,7 +779,7 @@ def main():
     parser.add_argument("--attackMode", type=str, default="lan",
                     help="Which layer were attacked vis or lan")
 
-
+    
 
     args = parser.parse_args()
 
@@ -831,7 +807,7 @@ def main():
     #attackMode = "vis"
 
     #IMAGE_PATH = f"gemma_attack/dataSamples/interference68.jpeg"
-
+    
 
     #os.makedirs("gemma_attack/outputsStorageImagenet", exist_ok=True)
     #os.makedirs(f"gemma_attack/outputsStorageImagenet/advOutputs/{attackSample}", exist_ok=True)
@@ -876,14 +852,14 @@ def main():
         else:
             return torch.linalg.svd(down_proj.weight.to(torch.float32))[0][:]
 
-    def getTopRightSingularVectorForMMproj(down_proj): # the difference is that this layer parameters were most likely transposed
+    def getTopRightSingularVectorForMMproj(down_proj): # the difference is that this layer parameters were most likely transposed 
         if kthSingVec<0:
             return torch.linalg.svd(down_proj.mm_input_projection_weight.T.to(torch.float32))[2][:]
         else:
             return torch.linalg.svd(down_proj.mm_input_projection_weight.T.to(torch.float32))[2][:]
 
 
-    def getTopLeftSingularVectorForMMproj(down_proj): # the difference is that this layer parameters were most likely transposed
+    def getTopLeftSingularVectorForMMproj(down_proj): # the difference is that this layer parameters were most likely transposed 
         if kthSingVec<0:
             return torch.linalg.svd(down_proj.mm_input_projection_weight.T.to(torch.float32))[0][:]
         else:
@@ -894,7 +870,7 @@ def main():
         param_heads = param.view(num_heads, d_head, d_model)
         query_vh_per_head = []
         for h in range(num_heads):
-            Wh = param_heads[h]
+            Wh = param_heads[h]      
             U, S, Vh = torch.linalg.svd(Wh.to(torch.float32) )
             if kthSingVec<0:
                 query_vh_per_head.append(Vh[:])
@@ -909,7 +885,7 @@ def main():
         param_heads = param.view(num_heads, d_head, d_model)
         query_vh_per_head = []
         for h in range(num_heads):
-            Wh = param_heads[h]
+            Wh = param_heads[h]      
             U, S, Vh = torch.linalg.svd(Wh.to(torch.float32) )
             if kthSingVec<0:
                 query_vh_per_head.append(U[:])
@@ -928,7 +904,7 @@ def main():
         param_heads = param.view(num_headsT, d_headT, d_modelT)
         query_vh_per_head = []
         for h in range(num_headsT):
-            Wh = param_heads[h]
+            Wh = param_heads[h]      
             U, S, Vh = torch.linalg.svd(Wh.to(torch.float32) )
             if kthSingVec<0:
                 query_vh_per_head.append(Vh[:])
@@ -943,7 +919,7 @@ def main():
         param_heads = param.view(num_headsT, d_headT, d_modelT)
         query_vh_per_head = []
         for h in range(num_headsT):
-            Wh = param_heads[h]
+            Wh = param_heads[h]      
             U, S, Vh = torch.linalg.svd(Wh.to(torch.float32) )
             if kthSingVec<0:
                 query_vh_per_head.append(U[:])
@@ -1025,15 +1001,15 @@ def main():
         hook_handle = down_proj.register_forward_pre_hook(down_proj_pre_hook)
         hook_handle = down_proj.register_forward_hook(down_proj_forward_hook)
 
-        allTopRightSingularVectors = [getTopRightSingularVectorForAttentioHeads(qryParam),
+        allTopRightSingularVectors = [getTopRightSingularVectorForAttentioHeads(qryParam), 
                                       getTopLeftSingularVectorForAttentioHeads(qryParam),
 
-                                      getTopRightSingularVectorForAttentioHeads(keyParam),
-                                      getTopLeftSingularVectorForAttentioHeads(keyParam),
+                                      getTopRightSingularVectorForAttentioHeads(keyParam), 
+                                      getTopLeftSingularVectorForAttentioHeads(keyParam), 
 
-                                      getTopRightSingularVectorForAttentioHeads(valParam),
-                                      getTopLeftSingularVectorForAttentioHeads(valParam),
-
+                                      getTopRightSingularVectorForAttentioHeads(valParam), 
+                                      getTopLeftSingularVectorForAttentioHeads(valParam), 
+                                      
                                       getTopRightSingularVector(visOutProjParam),
                                       getTopLeftSingularVector(visOutProjParam),
 
@@ -1063,7 +1039,7 @@ def main():
 
                                       getTopRightSingularVector(down_proj),
                                       getTopLeftSingularVector(down_proj)]
-
+        
     # ---------------- hook ----------------------
 
     # Load original image (keep original resolution)
@@ -1153,13 +1129,6 @@ def main():
 
         best_delta = torch.load(adv_noise_path).to(device)
 
-        # MODIFIED: build a "weak adversary" - gaussian noise scaled to the same
-        # L_inf epsilon bound as the trained ("strong") adversary. The clamping
-        # inside adam_attack_original_space (x_orig01 +/- epsilon) applies to
-        # whatever delta is passed in, so this receives the exact same L_inf
-        # bound treatment as best_delta.
-        weak_delta = torch.randn_like(best_delta) * epsilon
-
         x_adv01, best_pert, RightSingularInputAlignmentAgainstAdversary, FlattenedAlignmentDistributionsAdversary = adam_attack_original_space(
             model=model,
             processor=processor,
@@ -1228,57 +1197,12 @@ def main():
 
             #print("len(FlattenedAlignmentDistributionsOriginal)", len(FlattenedAlignmentDistributionsOriginal))
 
-        # MODIFIED: third pass - weak (gaussian, same L_inf bound) adversary.
-        x_adv01, best_pert, RightSingularInputAlignmentAgainstWeak, FlattenedAlignmentDistributionsWeak = adam_attack_original_space(
-            model=model,
-            processor=processor,
-            template_inputs=template_inputs,
-            x_orig01=x_orig01,
-            attck_type=attck_type,
-            num_steps=num_steps,
-            lr=lr,
-            epsilon=epsilon,
-            device=device,
-            AttackStartLayer = AttackStartLayer,
-            numLayerstAtAtime = numLayerstAtAtime,
-            allTopRightSingularVectors = allTopRightSingularVectors,
-            best_delta = weak_delta
-        )
-
-        if attackMode == "vis":
-            RightSingularInputAlignmentAgainstWeak = RightSingularInputAlignmentAgainstWeak[:6]
-            FlattenedAlignmentDistributionsWeak = FlattenedAlignmentDistributionsWeak[:6]
-        else:
-            RightSingularInputAlignmentAgainstWeak = RightSingularInputAlignmentAgainstWeak[7:]
-            FlattenedAlignmentDistributionsWeak = FlattenedAlignmentDistributionsWeak[7:]
-
-        # MODIFIED: compute the L2 difference between the ORIGINAL coeffs and
-        # each adversary's coeffs BEFORE doing the token-wise averaging (i.e.
-        # at the same stage where the code used to do "coeffs.mean(dim=1)").
-        # We square the elementwise difference, apply the exact same
-        # ".mean(dim=1)" reduction the helper functions used to apply to
-        # "coeffs" itself, then sqrt to get an (RMS-style) L2 distance.
-        # This keeps every downstream shape identical to before, so the
-        # existing sample-averaging / plotting code below needs no changes.
-        DiffStrongThisSample = []
-        DiffWeakThisSample = []
-        for i in range(len(FlattenedAlignmentDistributionsOriginal)):
-            orig_c = FlattenedAlignmentDistributionsOriginal[i]
-            adv_c = FlattenedAlignmentDistributionsAdversary[i]
-            weak_c = FlattenedAlignmentDistributionsWeak[i]
-
-            diffStrong = (orig_c - adv_c).pow(2).mean(dim=1).sqrt().flatten()
-            diffWeak = (orig_c - weak_c).pow(2).mean(dim=1).sqrt().flatten()
-
-            DiffStrongThisSample.append(diffStrong)
-            DiffWeakThisSample.append(diffWeak)
-
-        AggregationOverFlattenedAlignmentDistributionsOriginal.append(DiffWeakThisSample)
-        AggregationFlattenedAlignmentDistributionsAdversary.append(DiffStrongThisSample)
+        AggregationOverFlattenedAlignmentDistributionsOriginal.append(FlattenedAlignmentDistributionsOriginal)
+        AggregationFlattenedAlignmentDistributionsAdversary.append(FlattenedAlignmentDistributionsAdversary)
 
         '''for i in range(len(FlattenedAlignmentDistributionsOriginal)):
             print("FlattenedAlignmentDistributionsOriginal[i].shape", FlattenedAlignmentDistributionsOriginal[i].shape)'''
-
+        
 
         averagedAggregationOverFlattenedAlignmentDistributionsOriginal = [
             torch.stack(elements).mean(dim=0)
@@ -1290,17 +1214,6 @@ def main():
             for elements in zip(*AggregationFlattenedAlignmentDistributionsAdversary)
         ]
 
-
-
-        averagedAggregationOverFlattenedAlignmentDistributionsOriginalSTD = [
-            torch.stack(elements).mean(dim=0)
-            for elements in zip(*AggregationOverFlattenedAlignmentDistributionsOriginal)
-        ]
-
-        averagedAggregationFlattenedAlignmentDistributionsAdversarySTD = [
-            torch.stack(elements).mean(dim=0)
-            for elements in zip(*AggregationFlattenedAlignmentDistributionsAdversary)
-        ]
 
         #print(len(averagedAggregationOverFlattenedAlignmentDistributionsOriginal))          # 6
         #for t in averagedAggregationOverFlattenedAlignmentDistributionsOriginal:
@@ -1318,35 +1231,31 @@ def main():
             print("FlattenedAlignmentDistributionsAdversary[i].shape", averagedAggregationFlattenedAlignmentDistributionsAdversary[i].shape)
             print("FlattenedAlignmentDistributionsOriginal[i].shape", averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].shape)
 
-            # MODIFIED: these now hold L2-distance values (weak-vs-orig, and
-            # strong-vs-orig), not raw alignment coefficients.
-            weak = averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].detach().to(torch.float32).cpu().numpy()
-            strong = averagedAggregationFlattenedAlignmentDistributionsAdversary[i].detach().to(torch.float32).cpu().numpy()
+            orig = averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].detach().to(torch.float32).cpu().numpy()
+            adv = averagedAggregationFlattenedAlignmentDistributionsAdversary[i].detach().to(torch.float32).cpu().numpy()
 
-            weak = (weak)
-            strong = (strong)
+            orig = (orig)
+            adv = (adv)
 
-            L = len(weak)
+            L = len(orig)
             x = np.arange(L)
 
             label = point_labels[i].replace("\n", " ")
 
             fig, ax = plt.subplots(figsize=(10, 3.5))
 
-            # Strong (trained) adversary drawn first, weak (gaussian) adversary
-            # drawn second so both are visible where they overlap (transparent bars).
-            ax.bar(x, strong, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Strong Adversary (Trained) vs Original", zorder=2)
-            ax.bar(x, weak, width=1.0, color="blue", edgecolor="none", alpha=0.6, label="Weak Adversary (Gaussian) vs Original", zorder=1)
+            # Adversarial drawn first (background), Original drawn second so it overlaps on top.
+            ax.bar(x, adv, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Attacked", zorder=1)
+            ax.bar(x, orig, width=1.0, color="green", edgecolor="none", alpha=0.6, label="Original", zorder=2)
 
-            ax.set_title(f"{label} — L2 Distance: Weak vs Strong Adversary")
+            ax.set_title(f"{label} — Original over Attacked")
             ax.set_xlabel("<- top singular vector   |   bottom singular vector ->")
-            ax.set_ylabel("L2 Distance")
+            ax.set_ylabel("Alignment")
             ax.legend()
 
             plt.tight_layout()
 
-            save_dir = f"gemma_attack/OverlapDistancesAvg"
-            
+            save_dir = f"gemma_attack/OverlapHistoGramsAvgABS"
             os.makedirs(save_dir, exist_ok=True)
             save_path = os.path.join(
                 save_dir,
@@ -1357,63 +1266,7 @@ def main():
             plt.close()
             print(f"Saved: {save_path}")
 
-            # ADDED: log how far apart the weak (gaussian) and strong (trained)
-            # adversary L2-distance curves are, per layer/point, so runs across
-            # many LanLayerTrack/VisionLayerTrack values (see the sweep at the
-            # top of this file) can be compared to spot which layer shows the
-            # largest weak-vs-strong gap (a proxy for adversarial vulnerability).
-            weak_vs_strong_l2 = float(np.linalg.norm(strong - weak))
-            csv_path = os.path.join(save_dir, "weak_vs_strong_l2_summary.csv")
-            write_header = not os.path.exists(csv_path)
-            with open(csv_path, "a", newline="") as csv_f:
-                csv_writer = csv.writer(csv_f)
-                if write_header:
-                    csv_writer.writerow([
-                        "LanLayerTrack", "VisionLayerTrack", "attackMode",
-                        "point_label", "weak_vs_strong_l2_distance"
-                    ])
-                csv_writer.writerow([
-                    LanLayerTrack, VisionLayerTrack, attackMode,
-                    label, weak_vs_strong_l2
-                ])
-            print(f"Logged weak-vs-strong L2 distance ({weak_vs_strong_l2:.6f}) to: {csv_path}")
-
-
-            weak_std = averagedAggregationOverFlattenedAlignmentDistributionsOriginalSTD[i].detach().to(torch.float32).cpu().numpy()
-            strong_std = averagedAggregationFlattenedAlignmentDistributionsAdversarySTD[i].detach().to(torch.float32).cpu().numpy()
-
-            #print("weak_std", weak_std)
-            #print("strong_std", strong_std)
-
-            fig, ax = plt.subplots(figsize=(10, 3.5))
-
-            #ax.bar(x, strong, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Strong Adversary (Trained) vs Original", zorder=2)
-            #ax.bar(x, weak, width=1.0, color="blue", edgecolor="none", alpha=0.6, label="Weak Adversary (Gaussian) vs Original", zorder=1)
-
-            ax.fill_between(x, weak - weak_std, weak + weak_std, color="blue", alpha=0.35, linewidth=0, zorder=2.1)
-            ax.plot(x, weak, color="blue", linewidth=0.6, zorder=2.2)
-
-            ax.fill_between(x, strong - strong_std, strong + strong_std, color="red", alpha=0.35, linewidth=0, zorder=2.3)
-            ax.plot(x, strong, color="red", linewidth=0.6, zorder=2.4)
-
-            ax.set_title(f"{label} — L2 Distance: Weak vs Strong Adversary (Mean ± STD)")
-            ax.set_xlabel("<- top singular vector   |   bottom singular vector ->")
-            ax.set_ylabel("L2 Distance")
-            ax.legend()
-
-            plt.tight_layout()
-
-            save_dirBands = f"gemma_attack/OverlapDistancesAvgStdBands"
-            os.makedirs(save_dirBands, exist_ok=True)
-            save_pathBands = os.path.join(
-                save_dirBands,
-                f"Bar_{label.replace(' ', '_')}_attackSample_{attackSample}_attackMode_{attackMode}_LanLayerTrack_{LanLayerTrack})_VisionLayerTrack_{VisionLayerTrack}.png"
-            )
-            plt.savefig(save_pathBands, dpi=300, bbox_inches="tight")
-            plt.close(fig)
-            print(f"Saved: {save_pathBands}")
-
-
 
 if __name__ == "__main__":
     main()
+
