@@ -973,6 +973,7 @@ def main():
     kthSingVec = int(args.kthSingVec)
     attackMode = str(args.attackMode)
 
+    standardDivCutOff = 3
 
     MODEL_PATH = "../illcond/QwenAttack/Qwen2.5-VL-7B-Instruct"
     QUESTION = "What is shown in this image?"
@@ -1121,6 +1122,8 @@ def main():
                 ]
 
 
+
+
             for i in range(len(averagedAggregationOverFlattenedAlignmentDistributionsOriginal)):
 
                 #weak = averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].detach().to(torch.float32).cpu().numpy()
@@ -1138,7 +1141,7 @@ def main():
                 print("weak_norm.max()", weak_norm.max())
                 print("weak_norm.std()", weak_norm.std())
 
-                indices = torch.where(weak_norm > 3*weak_norm.std())[0]
+                indices = torch.where(weak_norm > standardDivCutOff*weak_norm.std())[0]
                 print("Number of indices:", len(indices))
 
                 print(indices)
