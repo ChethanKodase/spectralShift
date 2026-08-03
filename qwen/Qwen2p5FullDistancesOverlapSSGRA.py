@@ -1460,6 +1460,12 @@ def main():
             weak = (weak)
             strong = (strong)
 
+            weak_mean = np.mean(weak)
+            strong_mean = np.mean(strong)
+
+            weak_norm = weak / weak_mean
+            strong_norm = strong / strong_mean
+
             L = len(weak)
             x = np.arange(L)
 
@@ -1519,6 +1525,11 @@ def main():
             #print("weak_std", weak_std)
             #print("strong_std", strong_std)
 
+
+
+            weak_std_norm = weak_std / weak_mean
+            strong_std_norm = strong_std / strong_mean
+
             fig, ax = plt.subplots(figsize=(10, 3.5))
 
             #ax.bar(x, strong, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Strong Adversary (Trained) vs Original", zorder=2)
@@ -1538,6 +1549,37 @@ def main():
             plt.tight_layout()
 
             save_dirBands = f"qwen/OverlapDistancesAvgStdBandsSSGRA"
+            os.makedirs(save_dirBands, exist_ok=True)
+            save_pathBands = os.path.join(
+                save_dirBands,
+                f"Bar_{label.replace(' ', '_')}_attackSample_{attackSample}_attackMode_{attackMode}_LanLayerTrack_{LanLayerTrack})_VisionLayerTrack_{VisionLayerTrack}.png"
+            )
+            plt.savefig(save_pathBands, dpi=300, bbox_inches="tight")
+            plt.close(fig)
+            print(f"Saved: {save_pathBands}")
+
+
+            #--------------------------------------------------------------------            #--------------------------------------------------------------------            #--------------------------------------------------------------------
+
+            fig, ax = plt.subplots(figsize=(10, 3.5))
+
+            #ax.bar(x, strong, width=1.0, color="red", edgecolor="none", alpha=0.6, label="Strong Adversary (Trained) vs Original", zorder=2)
+            #ax.bar(x, weak, width=1.0, color="blue", edgecolor="none", alpha=0.6, label="Weak Adversary (Gaussian) vs Original", zorder=1)
+
+            ax.fill_between(x, weak_norm - weak_std_norm, weak_norm + weak_std_norm, color="blue", alpha=0.2, linewidth=0, zorder=2.1)
+            ax.plot(x, weak_norm, color="blue", linewidth=0.6, zorder=2.2)
+
+            ax.fill_between(x, strong_norm - strong_std_norm, strong_norm + strong_std_norm, color="red", alpha=0.2, linewidth=0, zorder=2.3)
+            ax.plot(x, strong_norm, color="red", linewidth=0.6, zorder=2.4)
+
+            ax.set_title(f"{label} — L2 Distance: Weak vs Strong Adversary (Mean ± STD)")
+            ax.set_xlabel("<- top singular vector   |   bottom singular vector ->")
+            ax.set_ylabel("L2 Distance")
+            ax.legend()
+
+            plt.tight_layout()
+
+            save_dirBands = f"qwen/OverlapDistancesAvgStdBandsSSGRA_Normalized"
             os.makedirs(save_dirBands, exist_ok=True)
             save_pathBands = os.path.join(
                 save_dirBands,

@@ -13,3 +13,4 @@ qwen/OverlapHistoGramsAvgSSGRA/
 qwen/QuantitativeAlignmentShift/
 qwen/QuantitativeAlignmentShiftSSGRA/
 gemma_attack/OverlapDistancesAvgStdBands/
+qwen/SpectrumAttackOverAlltest/
