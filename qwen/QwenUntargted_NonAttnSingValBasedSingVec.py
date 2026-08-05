@@ -1,82 +1,92 @@
-
-
-
 '''
 
-Same "attack every linear projection, every block" structure as
-QwenUntargted_spectSSGRA_AllLayersBlocks.py, but with a different way of
-choosing WHICH singular vectors of each weight matrix to push the input
-activations toward.
+Exactly the same attack as QwenUntargted_ChosenNonAttnSingularVectors.py
+(attention query/key/value are excluded everywhere -- not collected, not
+hooked, no part in importance sampling, no part in the loss), with one
+addition: on top of the existing clean-vs-random-noise importance-sampling
+selection, singular vectors are further filtered by their own singular
+value.
 
-QwenUntargted_spectSSGRA_AllLayersBlocks.py used a fixed BOTTOM fraction of
-each weight's singular spectrum (controlled by --towardsNull): take the
-smallest `towardsNull * absorbSize` singular vectors and align to that
-subspace.
+For every remaining targeted linear operator (attn output proj, every MLP
+projection in vision + language, and the merger projection):
 
-This script instead picks singular vectors the same way
-qwen/Qwen2p5SpectrumGuidedAttackSameSample.py does, generalized to run over
-every linear operator in every vision block, every language layer, and the
-vision-to-language merger, in one pass:
+  1. Compute the FULL right-singular-vector basis AND its singular values
+     (torch.linalg.svd(..., full_matrices=True) -> U, S, Vh), matching
+     getTopRightSingularVector from
+     qwen/Qwen2p5SpectrumGuidedAttackSameSample.py. Since full_matrices=True
+     makes Vh square (n,n) with n = the operator's input dimension, while S
+     only has min(out_features, in_features) real singular values, the
+     "extra" rows of Vh beyond that (present whenever in_features >
+     out_features, e.g. mlp.down_proj) are directions the weight maps to
+     exactly zero -- true null-space directions. Those are treated as
+     having singular value 0.0 (maximally information-attenuating), which
+     is the natural generalization of "singular value".
 
-  1. For every targeted linear operator (attention q/k/v -- per attention
-     head, exactly like the reference script's
-     getTopRightSingularVectorForVisionQKV /
-     getTopRightSingularVectorForLanAttentioHeads -- plus attention output
-     proj, every MLP projection, and the merger proj), compute the FULL
-     right-singular-vector basis of its weight (torch.linalg.svd(...,
-     full_matrices=True)), matching getTopRightSingularVector /
-     getTopRightSingularVectorForVisionQKV /
-     getTopRightSingularVectorForLanAttentioHeads exactly.
+  2. Exactly as in QwenUntargted_ChosenNonAttnSingularVectors.py: run one
+     clean forward pass (delta = 0) plus `--numRandomVarieties` random
+     L_inf-epsilon noise passes, measure per-singular-vector-index
+     alignment sensitivity (`weak_norm`), and select
 
-  2. Run ONE clean forward pass (delta = 0) and `--numRandomVarieties`
-     (default 10, matching NumRandomVarieties in the reference script)
-     forward passes with small random L_inf-epsilon noise deltas. For every
-     targeted operator, project its captured input activations onto every
-     vector of that operator's full singular basis (same alignment-energy
-     computation as getMeanAlignmentWithTopRightSingularVector /
-     getMeanAlignmentWithAttentionHeadTopRightSingularVector), and measure,
-     per singular-vector index, how much the alignment coefficient shifts
-     between the clean pass and each noisy pass:
+         weakNormIndices = where(weak_norm > standardDivCutOff * weak_norm.std())
 
-         diffWeak = sqrt(mean_over_tokens((clean_coeffs - weak_coeffs)^2))
+  3. NEW: also select singular vectors purely by the size of their
+     singular value:
 
-     averaged over the `numRandomVarieties` noisy passes -> `weak_mean`,
-     then normalized: `weak_norm = weak_mean / weak_mean.mean()`.
+         singValIndices = where(S > largeSingValThresh) | where(S < smallSingValThresh)
 
-  3. Exactly the formula from Qwen2p5SpectrumGuidedAttackSameSample.py:
+     i.e. singular vectors that strongly AMPLIFY their input direction
+     (singular value > largeSingValThresh, default 10) or strongly
+     ATTENUATE it (singular value < smallSingValThresh, default 1e-3,
+     which automatically includes any true null-space directions from
+     step 1).
 
-         indices = torch.where(weak_norm > standardDivCutOff * weak_norm.std())[0]
+  4. The final chosen subspace for that operator is
+     weakNormIndices INTERSECT singValIndices: singular vectors that are
+     BOTH unusually sensitive to a weak Gaussian perturbation AND either
+     strongly amplifying or strongly attenuating. If that intersection is
+     EMPTY for a given operator, there is no fallback -- that operator is
+     simply dropped from the attack entirely (no hook contributes to the
+     loss for it). This is logged per-operator.
 
-     selects the singular-vector indices whose alignment is unusually
-     sensitive to small perturbations. Those selected vectors (gathered
-     from the full singular basis computed in step 1) become the subspace
-     the attack aligns the input activations toward -- replacing the fixed
-     bottom-towardsNull-fraction subspace with this importance-sampled
-     subspace.
+  5. The optimization loop is unchanged: Adam over an original-image-space
+     perturbation delta, minimizing the mean alignment-energy loss between
+     each targeted operator's input activations and its chosen
+     singular-vector subspace, summed over the language / vision / merger
+     buckets (query/key/value absent from all three, as in
+     QwenUntargted_ChosenNonAttnSingularVectors.py).
 
-  4. The optimization loop itself is unchanged from
-     QwenUntargted_spectSSGRA_AllLayersBlocks.py: Adam over an
-     original-image-space perturbation delta, minimizing the mean
-     alignment-energy loss between each targeted operator's input
-     activations and its chosen singular-vector subspace, summed over every
-     language / vision / merger target.
-
---standardDivCutOff replaces --towardsNull as the attack's spectral
-selection hyperparameter and is recorded in every output filename (in
-place of towardsNull).
-
-NOTE on cost/memory: step 1's SVDs and step 2's forward passes are a
-ONE-TIME setup cost (not part of the per-optimization-step loop). The only
-per-operator matrix that gets large is mlp.down_proj in the language model
-(its input dimension is the 18944-wide intermediate size, so its full
-right-singular basis is 18944x18944 float32, ~1.4GB); this script computes
-one operator's full basis at a time and frees it immediately after
-selecting the (typically tiny) subspace of chosen vectors, so peak memory
-stays bounded to one such matrix rather than all of them at once. The raw
-clean/weak activation snapshots needed for step 2 are kept on CPU between
-passes for the same reason.
+--standardDivCutOff, --largeSingValThresh, and --smallSingValThresh are all
+recorded in every output filename.
 
 Example runs:
+
+
+export CUDA_VISIBLE_DEVICES=0
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+for ATTACK_SAMPLE in $(seq 1 50); do
+    python qwen/QwenUntargted_NonAttnSingValBasedSingVec.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 3 --largeSingValThresh 10 --smallSingValThresh 0.001
+done
+
+export CUDA_VISIBLE_DEVICES=1
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+for ATTACK_SAMPLE in $(seq 1 50); do
+    python qwen/QwenUntargted_NonAttnSingValBasedSingVec.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 3 --largeSingValThresh 100 --smallSingValThresh 0.001
+done
+
+export CUDA_VISIBLE_DEVICES=2
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+for ATTACK_SAMPLE in $(seq 1 50); do
+    python qwen/QwenUntargted_NonAttnSingValBasedSingVec.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 3 --largeSingValThresh 100 --smallSingValThresh 0.0001
+done
 
 export CUDA_VISIBLE_DEVICES=3
 conda deactivate
@@ -84,60 +94,15 @@ cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 3
+    python qwen/QwenUntargted_NonAttnSingValBasedSingVec.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 3 --largeSingValThresh 100 --smallSingValThresh 0.00001
 done
 
 
-export CUDA_VISIBLE_DEVICES=0
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 2
-done
-
-
-export CUDA_VISIBLE_DEVICES=1
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 1
-done
-
-
-export CUDA_VISIBLE_DEVICES=0
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
-done
-
-export CUDA_VISIBLE_DEVICES=1
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 6
-done
-
-# Restrict to a subset of layers / fewer random noise varieties if desired:
-python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample 1 --standardDivCutOff 3 --numRandomVarieties 10 --chosenLanLayers 2 --chosenVisLayers 0 1 2 4 5 6 7 8 9 14 24
 
 
 
-
-export CUDA_VISIBLE_DEVICES=0
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample 4 --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
+# Restrict to a subset of layers / adjust thresholds if desired:
+python qwen/QwenUntargted_NonAttnSingValBasedSingVec.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample 1 --standardDivCutOff 3 --largeSingValThresh 10 --smallSingValThresh 0.001 --numRandomVarieties 10 --chosenLanLayers 2 --chosenVisLayers 0 1 2 4 5 6 7 8 9 14 24
 
 '''
 
@@ -371,6 +336,8 @@ def run_generation_with_pixel_values(model, processor, template_inputs, pixel_va
 
 # ============================================================
 # Chosen-singular-vector selected module attack for Qwen2.5-VL
+# (attention query/key/value EXCLUDED everywhere; singular vectors are
+#  additionally filtered by their own singular value)
 # ============================================================
 layer_inputs = {}
 
@@ -416,57 +383,22 @@ def is_merger_target(name: str) -> bool:
     return bool(MERGER_NAME_PATTERN.search(name))
 
 
-def _resolve_vision_config(model):
-    cfg = model.config
-    return getattr(cfg, "vision_config", cfg)
-
-
-def _resolve_text_config(model):
-    cfg = model.config
-    return getattr(cfg, "text_config", cfg)
-
-
-def get_vision_head_config(model, sample_qkv_weight=None):
-    vision_cfg = _resolve_vision_config(model)
-    d_model = int(getattr(vision_cfg, "hidden_size", sample_qkv_weight.shape[1] if sample_qkv_weight is not None else 1280))
-    num_heads = int(getattr(vision_cfg, "num_heads", 16))
-    d_head = d_model // num_heads
-    return num_heads, d_head, d_model
-
-
-def get_language_head_config(model):
-    text_cfg = _resolve_text_config(model)
-    d_model = int(getattr(text_cfg, "hidden_size"))
-    num_heads = int(getattr(text_cfg, "num_attention_heads"))
-    num_kv_heads = int(getattr(text_cfg, "num_key_value_heads", num_heads))
-    d_head = d_model // num_heads
-    return num_heads, num_kv_heads, d_head, d_model
-
-
 # ----------------------------
 # Target-module discovery (every language layer, every vision block, merger)
+# -- attention query/key/value projections are intentionally NOT collected.
 # ----------------------------
 def collect_target_specs(
     model,
     chosen_lan_layers=None,
     chosen_vis_layers=None,
     include_merger=True,
-    vis_num_heads=16,
-    vis_d_head=80,
-    vis_d_model=1280,
-    lan_num_heads=28,
-    lan_num_kv_heads=4,
-    lan_d_head=128,
-    lan_d_model=3584,
 ):
     """
-    Same coverage as QwenUntargted_spectSSGRA_AllLayersBlocks.py's
-    collect_target_modules (every q/k/v/o + MLP projection in every vision
-    block and language layer, plus the merger), but attention q/k/v
-    projections are additionally marked is_head=True with the per-head
-    geometry needed to reproduce
-    getTopRightSingularVectorForVisionQKV / getTopRightSingularVectorForLanAttentioHeads
-    from Qwen2p5SpectrumGuidedAttackSameSample.py.
+    Same coverage as QwenUntargted_ChosenNonAttnSingularVectors.py's
+    collect_target_specs: the vision fused qkv projection and the language
+    self_attn.q_proj/k_proj/v_proj projections are skipped entirely. Only
+    attention OUTPUT proj (attn.proj / self_attn.o_proj), every MLP
+    projection, and the merger remain -- all as whole weight matrices.
     """
     chosen_lan_layers_set = None if chosen_lan_layers is None else set(chosen_lan_layers)
     chosen_vis_layers_set = None if chosen_vis_layers is None else set(chosen_vis_layers)
@@ -486,29 +418,21 @@ def collect_target_specs(
             if chosen_lan_layers_set is not None and lan_idx not in chosen_lan_layers_set:
                 continue
 
-            base = dict(hook_name=name, module=module, kind="language", layer_idx=lan_idx, weight_slice=None)
-
-            if name.endswith(".self_attn.q_proj"):
-                specs.append(dict(base, name=name, sub_kind="query proj (lan)", is_head=True,
-                                   num_heads=lan_num_heads, d_head=lan_d_head, d_in=lan_d_model))
-            elif name.endswith(".self_attn.k_proj"):
-                specs.append(dict(base, name=name, sub_kind="key proj (lan)", is_head=True,
-                                   num_heads=lan_num_kv_heads, d_head=lan_d_head, d_in=lan_d_model))
-            elif name.endswith(".self_attn.v_proj"):
-                specs.append(dict(base, name=name, sub_kind="value proj (lan)", is_head=True,
-                                   num_heads=lan_num_kv_heads, d_head=lan_d_head, d_in=lan_d_model))
-            elif name.endswith(".self_attn.o_proj"):
-                specs.append(dict(base, name=name, sub_kind="att output proj (lan)", is_head=False,
-                                   num_heads=None, d_head=None, d_in=None))
+            # NOTE: self_attn.q_proj / k_proj / v_proj are intentionally
+            # NOT matched here -- query/key/value take no part in this
+            # attack variant.
+            if name.endswith(".self_attn.o_proj"):
+                specs.append(dict(name=name, hook_name=name, module=module, kind="language",
+                                   sub_kind="att output proj (lan)", layer_idx=lan_idx, weight_slice=None))
             elif name.endswith(".mlp.gate_proj"):
-                specs.append(dict(base, name=name, sub_kind="MLP gate proj", is_head=False,
-                                   num_heads=None, d_head=None, d_in=None))
+                specs.append(dict(name=name, hook_name=name, module=module, kind="language",
+                                   sub_kind="MLP gate proj", layer_idx=lan_idx, weight_slice=None))
             elif name.endswith(".mlp.up_proj"):
-                specs.append(dict(base, name=name, sub_kind="MLP up proj", is_head=False,
-                                   num_heads=None, d_head=None, d_in=None))
+                specs.append(dict(name=name, hook_name=name, module=module, kind="language",
+                                   sub_kind="MLP up proj", layer_idx=lan_idx, weight_slice=None))
             elif name.endswith(".mlp.down_proj"):
-                specs.append(dict(base, name=name, sub_kind="MLP down proj", is_head=False,
-                                   num_heads=None, d_head=None, d_in=None))
+                specs.append(dict(name=name, hook_name=name, module=module, kind="language",
+                                   sub_kind="MLP down proj", layer_idx=lan_idx, weight_slice=None))
             continue
 
         # ---------------- vision transformer blocks ----------------
@@ -517,36 +441,27 @@ def collect_target_specs(
             if chosen_vis_layers_set is not None and vis_idx not in chosen_vis_layers_set:
                 continue
 
-            base = dict(hook_name=name, module=module, kind="vision", layer_idx=vis_idx)
-
-            if name.endswith(".attn.qkv"):
-                out_dim = module.weight.shape[0]
-                third = out_dim // 3
-                for i, label in enumerate(["query proj (vis)", "key proj (vis)", "value proj (vis)"]):
-                    specs.append(dict(base, name=f"{name}::{label}", sub_kind=label, is_head=True,
-                                       weight_slice=(i * third, (i + 1) * third),
-                                       num_heads=vis_num_heads, d_head=vis_d_head, d_in=vis_d_model))
-                continue
-
+            # NOTE: attn.qkv (fused query/key/value) is intentionally NOT
+            # matched here -- query/key/value take no part in this attack
+            # variant.
             if name.endswith(".attn.proj"):
-                specs.append(dict(base, name=name, sub_kind="att output proj (vis)", is_head=False,
-                                   weight_slice=None, num_heads=None, d_head=None, d_in=None))
+                specs.append(dict(name=name, hook_name=name, module=module, kind="vision",
+                                   sub_kind="att output proj (vis)", layer_idx=vis_idx, weight_slice=None))
             elif name.endswith(".mlp.gate_proj"):
-                specs.append(dict(base, name=name, sub_kind="MLP gate (vis)", is_head=False,
-                                   weight_slice=None, num_heads=None, d_head=None, d_in=None))
+                specs.append(dict(name=name, hook_name=name, module=module, kind="vision",
+                                   sub_kind="MLP gate (vis)", layer_idx=vis_idx, weight_slice=None))
             elif name.endswith(".mlp.up_proj"):
-                specs.append(dict(base, name=name, sub_kind="MLP up (vis)", is_head=False,
-                                   weight_slice=None, num_heads=None, d_head=None, d_in=None))
+                specs.append(dict(name=name, hook_name=name, module=module, kind="vision",
+                                   sub_kind="MLP up (vis)", layer_idx=vis_idx, weight_slice=None))
             elif name.endswith(".mlp.down_proj"):
-                specs.append(dict(base, name=name, sub_kind="MLP down (vis)", is_head=False,
-                                   weight_slice=None, num_heads=None, d_head=None, d_in=None))
+                specs.append(dict(name=name, hook_name=name, module=module, kind="vision",
+                                   sub_kind="MLP down (vis)", layer_idx=vis_idx, weight_slice=None))
             continue
 
         # ---------------- vision-to-language bridge ----------------
         if include_merger and is_merger_target(name):
-            specs.append(dict(hook_name=name, module=module, kind="merger", layer_idx=None,
-                               name=name, sub_kind=MERGER_LABEL, is_head=False,
-                               weight_slice=None, num_heads=None, d_head=None, d_in=None))
+            specs.append(dict(name=name, hook_name=name, module=module, kind="merger",
+                               sub_kind=MERGER_LABEL, layer_idx=None, weight_slice=None))
 
     return specs
 
@@ -565,29 +480,30 @@ def register_all_hooks(specs):
 
 
 # ----------------------------
-# Full singular-vector basis (matches getTopRightSingularVector /
-# getTopRightSingularVectorForVisionQKV / getTopRightSingularVectorForLanAttentioHeads)
+# Full singular-vector basis AND singular values (matches
+# getTopRightSingularVector from Qwen2p5SpectrumGuidedAttackSameSample.py;
+# no per-head variant needed here since there is no attention q/k/v left
+# to split).
 # ----------------------------
-def compute_full_vh_for_spec(spec):
+def compute_full_vh_and_s_for_spec(spec):
     with torch.no_grad():
         W = spec["module"].weight.detach().to(torch.float32)
         if spec["weight_slice"] is not None:
             start, end = spec["weight_slice"]
             W = W[start:end, :]
+        U, S, Vh = torch.linalg.svd(W, full_matrices=True)  # Vh: (n, n), S: (min(out,n),)
 
-        if spec["is_head"]:
-            num_heads = spec["num_heads"]
-            d_head = spec["d_head"]
-            d_in = spec["d_in"]
-            W = W.reshape(num_heads, d_head, d_in)
-            vh_list = []
-            for h in range(num_heads):
-                Vh_h = torch.linalg.svd(W[h], full_matrices=True)[2]  # (d_in, d_in)
-                vh_list.append(Vh_h)
-            Vh = torch.stack(vh_list, dim=0)  # (num_heads, d_in, d_in)
-        else:
-            Vh = torch.linalg.svd(W, full_matrices=True)[2]  # (n, n)
-    return Vh
+    n = Vh.shape[-1]
+    if S.numel() < n:
+        # full_matrices=True pads Vh with an orthogonal completion of the
+        # row space whenever in_features > out_features (e.g. down_proj).
+        # Those extra directions are exactly the weight's null space, i.e.
+        # singular value 0.0 -- maximally information-attenuating.
+        pad = torch.zeros(n - S.numel(), dtype=S.dtype, device=S.device)
+        S_full = torch.cat([S, pad], dim=0)
+    else:
+        S_full = S
+    return Vh, S_full
 
 
 def _flatten_tokens(H):
@@ -602,32 +518,39 @@ def _flatten_tokens(H):
     return H
 
 
-def _coeffs_against_full_vh(H, Vh, is_head):
+def _coeffs_against_full_vh(H, Vh):
     """
-    Mirrors getMeanAlignmentWithTopRightSingularVector (is_head=False) /
-    getMeanAlignmentWithAttentionHeadTopRightSingularVector (is_head=True),
-    returning the raw per-token, per-singular-vector coefficients.
+    Mirrors getMeanAlignmentWithTopRightSingularVector, returning the raw
+    per-token, per-singular-vector coefficients.
     """
     H = _flatten_tokens(H)
     H_hat = F.normalize(H, dim=1)
-    if is_head:
-        V_hat = F.normalize(Vh, dim=2)                      # (heads, n, n)
-        coeffs = torch.einsum('nd,hkd->hnk', H_hat, V_hat)  # (heads, N, n)
-    else:
-        V_hat = F.normalize(Vh, dim=1)                      # (n, n)
-        coeffs = H_hat @ V_hat.T                            # (N, n)
+    V_hat = F.normalize(Vh, dim=1)  # (n, n)
+    coeffs = H_hat @ V_hat.T        # (N, n)
     return coeffs
 
 
 def getMeanAlignmentLossWithChosenSubspace(InputToLayer, chosenRightSingularVectors):
     """
     Same alignment-energy loss as
-    QwenUntargted_spectSSGRA_AllLayersBlocks.py's
-    getMeanAlignmentLossWithBottomSubspace, just fed the importance-sampled
-    subspace instead of a fixed bottom-towardsNull-fraction subspace.
+    QwenUntargted_ChosenNonAttnSingularVectors.py's
+    getMeanAlignmentLossWithChosenSubspace, EXCEPT the alignment math
+    (normalize, dot products, the loss itself) is done in float32 instead
+    of the model's compute dtype (bfloat16 on GPU).
+
+    The chosen singular vectors were already computed in float32 during
+    importance sampling; previously this function downcast them to H's
+    dtype (bf16) before computing the loss, throwing that precision away
+    right before it matters most. bf16 only has ~7 mantissa bits, and the
+    per-step loss deltas this attack produces are frequently smaller than
+    bf16's precision floor at these magnitudes -- upcasting H to float32
+    here (rather than downcasting V) keeps the loss value and its backward
+    pass at full precision, which should reduce artificially-flat/rounded
+    loss curves without changing memory usage or requiring the whole model
+    to run in float32.
     """
-    H = _flatten_tokens(InputToLayer)
-    V = chosenRightSingularVectors.to(device=H.device, dtype=H.dtype)
+    H = _flatten_tokens(InputToLayer).to(torch.float32)
+    V = chosenRightSingularVectors.to(device=H.device, dtype=torch.float32)
 
     H_hat = F.normalize(H, dim=1)
     V_hat = F.normalize(V, dim=1)
@@ -643,6 +566,9 @@ def getMeanAlignmentLossWithChosenSubspace(InputToLayer, chosenRightSingularVect
 # clean-vs-random-noise sensitivity criterion as
 # Qwen2p5SpectrumGuidedAttackSameSample.py's
 #   indices = torch.where(weak_norm > standardDivCutOff * weak_norm.std())[0]
+# then further filter by singular-value magnitude:
+#   singValIndices = where(S > largeSingValThresh) | where(S < smallSingValThresh)
+# -- run only over the non-attention-q/k/v targets collected above.
 # ----------------------------
 def run_importance_sampling(
     model,
@@ -654,6 +580,8 @@ def run_importance_sampling(
     target_specs,
     standardDivCutOff: float,
     numRandomVarieties: int,
+    largeSingValThresh: float,
+    smallSingValThresh: float,
 ):
     unique_hook_names = sorted(set(s["hook_name"] for s in target_specs))
 
@@ -684,8 +612,11 @@ def run_importance_sampling(
                 snapshot[hn] = H.detach().to(torch.float32).cpu()
         return snapshot
 
-    print(f"\n[INFO] Importance sampling: 1 clean pass + {numRandomVarieties} weak-noise "
-          f"passes (epsilon={epsilon}) over {len(unique_hook_names)} hooked modules ...")
+    print(f"\n[INFO] Importance sampling (query/key/value EXCLUDED): 1 clean pass + "
+          f"{numRandomVarieties} weak-noise passes (epsilon={epsilon}) over "
+          f"{len(unique_hook_names)} hooked modules ...")
+    print(f"[INFO] Singular-value filter: keep amplifying (S > {largeSingValThresh}) "
+          f"or attenuating (S < {smallSingValThresh}) directions.")
 
     clean_snapshot = run_one_pass(torch.zeros_like(x_orig01))
     if device.type == "cuda":
@@ -698,8 +629,8 @@ def run_importance_sampling(
         if device.type == "cuda":
             torch.cuda.empty_cache()
 
-    print("[INFO] Forward passes complete. Selecting importance-sampled singular-vector subspaces ...")
-    print("\n========== CHOSEN SINGULAR-VECTOR SUBSPACES (ALL LAYER TYPES, ALL BLOCKS) ==========")
+    print("[INFO] Forward passes complete. Selecting importance-sampled + singular-value-filtered subspaces ...")
+    print("\n========== CHOSEN SINGULAR-VECTOR SUBSPACES (NO ATTENTION Q/K/V, ALL BLOCKS) ==========")
 
     num_kept = 0
     for spec_i, spec in enumerate(target_specs):
@@ -708,58 +639,85 @@ def run_importance_sampling(
             spec["target_vectors"] = None
             continue
 
-        Vh = compute_full_vh_for_spec(spec).to(device)
+        Vh, S_full = compute_full_vh_and_s_for_spec(spec)
+        Vh = Vh.to(device)
+        S_full = S_full.to(device)
         n = Vh.shape[-1]
 
         H_clean = clean_snapshot[hn].to(device)
-        orig_coeffs = _coeffs_against_full_vh(H_clean, Vh, spec["is_head"])
+        orig_coeffs = _coeffs_against_full_vh(H_clean, Vh)
 
         diffs = []
         for v in range(numRandomVarieties):
             H_weak = weak_snapshots[v][hn].to(device)
-            weak_coeffs = _coeffs_against_full_vh(H_weak, Vh, spec["is_head"])
-            token_dim = 0 if weak_coeffs.dim() == 2 else 1
-            diff_v = (orig_coeffs - weak_coeffs).pow(2).mean(dim=token_dim).sqrt().reshape(-1)
+            weak_coeffs = _coeffs_against_full_vh(H_weak, Vh)
+            diff_v = (orig_coeffs - weak_coeffs).pow(2).mean(dim=0).sqrt().reshape(-1)
             diffs.append(diff_v)
             del H_weak, weak_coeffs
 
-        diffs = torch.stack(diffs, dim=0)             # (numRandomVarieties, flat_len)
-        weak_mean = diffs.mean(dim=0)                 # (flat_len,)
+        diffs = torch.stack(diffs, dim=0)             # (numRandomVarieties, n)
+        weak_mean = diffs.mean(dim=0)                 # (n,)
         weak_mean_avg = weak_mean.mean()
         weak_norm = weak_mean / (weak_mean_avg + 1e-12)
         cutoff = standardDivCutOff * weak_norm.std()
 
-        chosen_flat_idx = torch.where(weak_norm > cutoff)[0]
-        if chosen_flat_idx.numel() == 0:
+        weak_norm_idx = torch.where(weak_norm > cutoff)[0]
+        if weak_norm_idx.numel() == 0:
             # Safety fallback: always keep at least one (the most sensitive) direction.
-            chosen_flat_idx = torch.argmax(weak_norm).view(1)
+            weak_norm_idx = torch.argmax(weak_norm).view(1)
 
-        if spec["is_head"]:
-            head_idx = torch.div(chosen_flat_idx, n, rounding_mode="floor")
-            row_idx = chosen_flat_idx % n
-            target_vectors = Vh[head_idx, row_idx, :].contiguous()
-        else:
-            target_vectors = Vh[chosen_flat_idx, :].contiguous()
+        # ---- NEW: singular-value-magnitude filter, on top of weak_norm ----
+        singval_mask = (S_full > largeSingValThresh) | (S_full < smallSingValThresh)
 
-        spec["target_vectors"] = target_vectors.detach().clone()
-        spec["num_chosen"] = int(chosen_flat_idx.numel())
-        num_kept += 1
+        weak_norm_mask = torch.zeros(n, dtype=torch.bool, device=device)
+        weak_norm_mask[weak_norm_idx] = True
+
+        combined_mask = weak_norm_mask & singval_mask
+        chosen_flat_idx = torch.where(combined_mask)[0]
 
         layer_str = f"{spec['layer_idx']:3d}" if spec["layer_idx"] is not None else "N/A"
-        head_tag = f"{Vh.shape[0]}heads x {n}" if spec["is_head"] else f"{n}"
+
+        if chosen_flat_idx.numel() == 0:
+            # No fallback: if no singular vector is BOTH weak-norm-sensitive
+            # AND amplifying/attenuating enough, this operator is simply
+            # dropped from the attack entirely.
+            spec["target_vectors"] = None
+            spec["num_chosen_weakNorm"] = int(weak_norm_idx.numel())
+            spec["num_chosen_final"] = 0
+            spec["selection_note"] = "empty weakNorm ∩ singVal intersection -> operator skipped"
+
+            print(
+                f"{spec['kind']:8s} | layer={layer_str} | {spec['sub_kind']:24s} | {hn} | "
+                f"full_basis={n} | weakNorm_chosen={spec['num_chosen_weakNorm']} | "
+                f"final_chosen=0 | note=[SKIPPED: {spec['selection_note']}]"
+            )
+
+            del Vh, S_full, H_clean, orig_coeffs, diffs
+            if device.type == "cuda" and spec_i % 8 == 0:
+                torch.cuda.empty_cache()
+            continue
+
+        target_vectors = Vh[chosen_flat_idx, :].contiguous()
+
+        spec["target_vectors"] = target_vectors.detach().clone()
+        spec["num_chosen_weakNorm"] = int(weak_norm_idx.numel())
+        spec["num_chosen_final"] = int(chosen_flat_idx.numel())
+        spec["selection_note"] = "weakNorm ∩ singVal"
+        num_kept += 1
+
         print(
             f"{spec['kind']:8s} | layer={layer_str} | {spec['sub_kind']:24s} | {hn} | "
-            f"full_basis={head_tag} | weak_norm.std={float(weak_norm.std().item()):.6f} "
-            f"| chosen={spec['num_chosen']}"
+            f"full_basis={n} | weakNorm_chosen={spec['num_chosen_weakNorm']} | "
+            f"final_chosen={spec['num_chosen_final']} | note=[{spec['selection_note']}]"
         )
 
-        del Vh, H_clean, orig_coeffs, diffs
+        del Vh, S_full, H_clean, orig_coeffs, diffs
         if device.type == "cuda" and spec_i % 8 == 0:
             torch.cuda.empty_cache()
 
-    print("=====================================================================================")
+    print("=========================================================================================")
     print(f"Total targets with a chosen subspace: {num_kept} / {len(target_specs)}")
-    print("=====================================================================================\n")
+    print("=========================================================================================\n")
 
     del clean_snapshot, weak_snapshots
     if device.type == "cuda":
@@ -823,6 +781,8 @@ def adam_attack_original_space(
     numLayerstAtAtime: int,
     standardDivCutOff: float,
     numRandomVarieties: int,
+    largeSingValThresh: float,
+    smallSingValThresh: float,
     chosenLanLayers=None,
     chosenVisLayers=None,
     includeMerger=True,
@@ -840,21 +800,11 @@ def adam_attack_original_space(
 
     model.eval()
 
-    vis_num_heads, vis_d_head, vis_d_model = get_vision_head_config(model)
-    lan_num_heads, lan_num_kv_heads, lan_d_head, lan_d_model = get_language_head_config(model)
-
     target_specs = collect_target_specs(
         model,
         chosen_lan_layers=chosenLanLayers,
         chosen_vis_layers=chosenVisLayers,
         include_merger=includeMerger,
-        vis_num_heads=vis_num_heads,
-        vis_d_head=vis_d_head,
-        vis_d_model=vis_d_model,
-        lan_num_heads=lan_num_heads,
-        lan_num_kv_heads=lan_num_kv_heads,
-        lan_d_head=lan_d_head,
-        lan_d_model=lan_d_model,
     )
 
     if len(target_specs) == 0:
@@ -874,6 +824,8 @@ def adam_attack_original_space(
         target_specs,
         standardDivCutOff=standardDivCutOff,
         numRandomVarieties=numRandomVarieties,
+        largeSingValThresh=largeSingValThresh,
+        smallSingValThresh=smallSingValThresh,
     )
 
     if len(target_specs) == 0:
@@ -949,7 +901,7 @@ def adam_attack_original_space(
 # ----------------------------
 def main():
     parser = argparse.ArgumentParser(
-        description="Qwen2.5-VL ORIGINAL-image-space adversarial attack, importance-sampled singular-vector subspaces, ALL layer types, ALL blocks"
+        description="Qwen2.5-VL ORIGINAL-image-space adversarial attack, importance-sampled + singular-value-filtered singular-vector subspaces, ALL blocks, attention q/k/v EXCLUDED"
     )
     parser.add_argument("--attck_type", type=str, default="grill_l2", help="kept for compatibility")
     parser.add_argument("--desired_norm_l_inf", type=float, default=0.03, help="epsilon L_inf in ORIGINAL pixel space [0..1]")
@@ -965,10 +917,28 @@ def main():
         type=float,
         default=3.0,
         help=(
-            "Replaces --towardsNull. Singular-vector indices are kept where "
+            "Singular-vector indices are first kept where "
             "weak_norm > standardDivCutOff * weak_norm.std(), exactly as in "
-            "Qwen2p5SpectrumGuidedAttackSameSample.py, and the resulting "
-            "importance-sampled singular vectors span the target subspace."
+            "Qwen2p5SpectrumGuidedAttackSameSample.py."
+        ),
+    )
+    parser.add_argument(
+        "--largeSingValThresh",
+        type=float,
+        default=10.0,
+        help=(
+            "On top of the weak_norm selection, keep singular vectors whose own "
+            "singular value is greater than this (information-AMPLIFYING directions)."
+        ),
+    )
+    parser.add_argument(
+        "--smallSingValThresh",
+        type=float,
+        default=1e-3,
+        help=(
+            "On top of the weak_norm selection, keep singular vectors whose own "
+            "singular value is less than this (information-ATTENUATING directions, "
+            "including true null-space directions)."
         ),
     )
     parser.add_argument(
@@ -1009,6 +979,10 @@ def main():
         help="Exclude the vision-to-language merger projection.",
     )
 
+    # NOTE: attention query/key/value are always excluded in this script --
+    # there is intentionally no flag to re-enable them here. Use
+    # QwenUntargted_ChosenSingulaeVectors.py for the variant that includes them.
+
     args = parser.parse_args()
 
     attck_type = args.attck_type
@@ -1023,6 +997,8 @@ def main():
     AttackStartLayer = int(args.AttackStartLayer)
     numLayerstAtAtime = int(args.numLayerstAtAtime)
     standardDivCutOff = float(args.standardDivCutOff)
+    largeSingValThresh = float(args.largeSingValThresh)
+    smallSingValThresh = float(args.smallSingValThresh)
     numRandomVarieties = int(args.numRandomVarieties)
     includeMerger = bool(args.includeMerger)
 
@@ -1061,16 +1037,19 @@ def main():
     model.eval()
     model.config.use_cache = False
 
-    print("\n[INFO] Qwen ALL-layer, ALL-block, CHOSEN-singular-vector variant.")
-    print("[INFO] For every q/k/v/o and MLP projection in every vision block, every")
-    print("[INFO] language layer, and the merger projection, singular-vector indices")
-    print("[INFO] are importance-sampled via the clean-vs-random-noise sensitivity")
-    print("[INFO] criterion from Qwen2p5SpectrumGuidedAttackSameSample.py, then used")
-    print("[INFO] to span the alignment target subspace (replacing bottom-towardsNull).")
+    print("\n[INFO] Qwen ALL-block, CHOSEN-singular-vector variant, ATTENTION Q/K/V EXCLUDED.")
+    print("[INFO] Only attn output proj, every MLP projection (vision + language), and the")
+    print("[INFO] merger projection are targeted. Singular-vector indices are first")
+    print("[INFO] importance-sampled via the clean-vs-random-noise sensitivity criterion")
+    print("[INFO] from Qwen2p5SpectrumGuidedAttackSameSample.py, then further filtered to")
+    print("[INFO] keep only strongly amplifying (S > largeSingValThresh) or strongly")
+    print("[INFO] attenuating (S < smallSingValThresh) singular vectors.")
     print(f"[INFO] chosenLanLayers={chosenLanLayers if chosenLanLayers is not None else 'ALL (0-27)'}")
     print(f"[INFO] chosenVisLayers={chosenVisLayers if chosenVisLayers is not None else 'ALL (0-31)'}")
     print(f"[INFO] includeMerger={includeMerger}")
     print(f"[INFO] standardDivCutOff={standardDivCutOff}")
+    print(f"[INFO] largeSingValThresh={largeSingValThresh}")
+    print(f"[INFO] smallSingValThresh={smallSingValThresh}")
     print(f"[INFO] numRandomVarieties={numRandomVarieties}\n")
 
     pil = Image.open(IMAGE_PATH).convert("RGB")
@@ -1098,8 +1077,10 @@ def main():
         f"qwen/outputsStorageImagenet/convergence/{attackSample}/"
         f"qwen_ORIG_attack_{attck_type}_lr_{lr}_eps_{epsilon}_"
         f"AttackStartLayer_{AttackStartLayer}_numLayerstAtAtime_{numLayerstAtAtime}_"
-        f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_numRandomVarieties_{numRandomVarieties}_"
-        f"ChosenSingVecs_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.npy"
+        f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_"
+        f"largeThresh_{largeSingValThresh}_smallThresh_{smallSingValThresh}_"
+        f"numRandomVarieties_{numRandomVarieties}_"
+        f"NonAttnSingValBasedSingVec_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.npy"
     )
 
     x_adv01, best_pert = adam_attack_original_space(
@@ -1117,6 +1098,8 @@ def main():
         numLayerstAtAtime=numLayerstAtAtime,
         standardDivCutOff=standardDivCutOff,
         numRandomVarieties=numRandomVarieties,
+        largeSingValThresh=largeSingValThresh,
+        smallSingValThresh=smallSingValThresh,
         chosenLanLayers=chosenLanLayers,
         chosenVisLayers=chosenVisLayers,
         includeMerger=includeMerger,
@@ -1124,18 +1107,20 @@ def main():
 
     adv_img_path = (
         f"qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
-        f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_"
-        f"AttackStartLayer_{AttackStartLayer}_numLayerstAtAtime_{numLayerstAtAtime}_"
-        f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_numRandomVarieties_{numRandomVarieties}_"
-        f"ChosenSingVecs_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.png"
+        f"attackType_{attck_type}_lr_{lr}_eps_{epsilon}_"
+        f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_"
+        f"largeThresh_{largeSingValThresh}_smallThresh_{smallSingValThresh}_"
+        f"numRandomVarieties_{numRandomVarieties}_"
+        f"NonAttnSingValBasedSingVec_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.png"
     )
 
     adv_noise_path = (
         f"qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
-        f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_"
-        f"AttackStartLayer_{AttackStartLayer}_numLayerstAtAtime_{numLayerstAtAtime}_"
-        f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_numRandomVarieties_{numRandomVarieties}_"
-        f"ChosenSingVecs_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.pt"
+        f"attackType_{attck_type}_lr_{lr}_eps_{epsilon}_"
+        f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_"
+        f"largeThresh_{largeSingValThresh}_smallThresh_{smallSingValThresh}_"
+        f"numRandomVarieties_{numRandomVarieties}_"
+        f"NonAttnSingValBasedSingVec_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.pt"
     )
 
     tensor01_to_pil(x_adv01).save(adv_img_path)
@@ -1162,9 +1147,10 @@ def main():
     advOutTxt = (
         f"qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
         f"advOutput_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_"
-        f"AttackStartLayer_{AttackStartLayer}_numLayerstAtAtime_{numLayerstAtAtime}_"
-        f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_numRandomVarieties_{numRandomVarieties}_"
-        f"ChosenSingVecs_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.txt"
+        f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_"
+        f"largeThresh_{largeSingValThresh}_smallThresh_{smallSingValThresh}_"
+        f"numRandomVarieties_{numRandomVarieties}_"
+        f"NonAttnSingValBasedSingVec_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.txt"
     )
     with open(advOutTxt, "w") as f:
         f.write(adv_text + "\n")
