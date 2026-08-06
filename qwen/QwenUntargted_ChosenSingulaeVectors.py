@@ -3,80 +3,16 @@
 
 '''
 
-Same "attack every linear projection, every block" structure as
-QwenUntargted_spectSSGRA_AllLayersBlocks.py, but with a different way of
-choosing WHICH singular vectors of each weight matrix to push the input
-activations toward.
 
-QwenUntargted_spectSSGRA_AllLayersBlocks.py used a fixed BOTTOM fraction of
-each weight's singular spectrum (controlled by --towardsNull): take the
-smallest `towardsNull * absorbSize` singular vectors and align to that
-subspace.
 
-This script instead picks singular vectors the same way
-qwen/Qwen2p5SpectrumGuidedAttackSameSample.py does, generalized to run over
-every linear operator in every vision block, every language layer, and the
-vision-to-language merger, in one pass:
-
-  1. For every targeted linear operator (attention q/k/v -- per attention
-     head, exactly like the reference script's
-     getTopRightSingularVectorForVisionQKV /
-     getTopRightSingularVectorForLanAttentioHeads -- plus attention output
-     proj, every MLP projection, and the merger proj), compute the FULL
-     right-singular-vector basis of its weight (torch.linalg.svd(...,
-     full_matrices=True)), matching getTopRightSingularVector /
-     getTopRightSingularVectorForVisionQKV /
-     getTopRightSingularVectorForLanAttentioHeads exactly.
-
-  2. Run ONE clean forward pass (delta = 0) and `--numRandomVarieties`
-     (default 10, matching NumRandomVarieties in the reference script)
-     forward passes with small random L_inf-epsilon noise deltas. For every
-     targeted operator, project its captured input activations onto every
-     vector of that operator's full singular basis (same alignment-energy
-     computation as getMeanAlignmentWithTopRightSingularVector /
-     getMeanAlignmentWithAttentionHeadTopRightSingularVector), and measure,
-     per singular-vector index, how much the alignment coefficient shifts
-     between the clean pass and each noisy pass:
-
-         diffWeak = sqrt(mean_over_tokens((clean_coeffs - weak_coeffs)^2))
-
-     averaged over the `numRandomVarieties` noisy passes -> `weak_mean`,
-     then normalized: `weak_norm = weak_mean / weak_mean.mean()`.
-
-  3. Exactly the formula from Qwen2p5SpectrumGuidedAttackSameSample.py:
-
-         indices = torch.where(weak_norm > standardDivCutOff * weak_norm.std())[0]
-
-     selects the singular-vector indices whose alignment is unusually
-     sensitive to small perturbations. Those selected vectors (gathered
-     from the full singular basis computed in step 1) become the subspace
-     the attack aligns the input activations toward -- replacing the fixed
-     bottom-towardsNull-fraction subspace with this importance-sampled
-     subspace.
-
-  4. The optimization loop itself is unchanged from
-     QwenUntargted_spectSSGRA_AllLayersBlocks.py: Adam over an
-     original-image-space perturbation delta, minimizing the mean
-     alignment-energy loss between each targeted operator's input
-     activations and its chosen singular-vector subspace, summed over every
-     language / vision / merger target.
-
---standardDivCutOff replaces --towardsNull as the attack's spectral
-selection hyperparameter and is recorded in every output filename (in
-place of towardsNull).
-
-NOTE on cost/memory: step 1's SVDs and step 2's forward passes are a
-ONE-TIME setup cost (not part of the per-optimization-step loop). The only
-per-operator matrix that gets large is mlp.down_proj in the language model
-(its input dimension is the 18944-wide intermediate size, so its full
-right-singular basis is 18944x18944 float32, ~1.4GB); this script computes
-one operator's full basis at a time and frees it immediately after
-selecting the (typically tiny) subspace of chosen vectors, so peak memory
-stays bounded to one such matrix rather than all of them at once. The raw
-clean/weak activation snapshots needed for step 2 are kept on CPU between
-passes for the same reason.
-
-Example runs:
+export CUDA_VISIBLE_DEVICES=2
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+for ATTACK_SAMPLE in $(seq 1 50); do
+    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.003 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
+done
 
 export CUDA_VISIBLE_DEVICES=3
 conda deactivate
@@ -84,47 +20,10 @@ cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 3
+    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.003 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
 done
 
 
-export CUDA_VISIBLE_DEVICES=0
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 2
-done
-
-
-export CUDA_VISIBLE_DEVICES=1
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 1
-done
-
-
-export CUDA_VISIBLE_DEVICES=0
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
-done
-
-export CUDA_VISIBLE_DEVICES=1
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 6
-done
 
 # Restrict to a subset of layers / fewer random noise varieties if desired:
 python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample 1 --standardDivCutOff 3 --numRandomVarieties 10 --chosenLanLayers 2 --chosenVisLayers 0 1 2 4 5 6 7 8 9 14 24
@@ -132,12 +31,12 @@ python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type saa_loop --desir
 
 
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=3
 conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
-python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample 4 --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
+python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample 4 --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 20
 
 '''
 
