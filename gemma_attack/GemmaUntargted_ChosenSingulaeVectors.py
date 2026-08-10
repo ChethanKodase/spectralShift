@@ -88,7 +88,7 @@ cd spectralShift/
 conda activate gemma3
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 3
+    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 3
 done
 
 
@@ -99,7 +99,7 @@ cd spectralShift/
 conda activate gemma3
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
+    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
 done
 
 
@@ -109,7 +109,7 @@ cd spectralShift/
 conda activate gemma3
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
+    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
 done
 
 

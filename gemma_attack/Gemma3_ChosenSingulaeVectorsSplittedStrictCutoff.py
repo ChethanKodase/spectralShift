@@ -4,62 +4,100 @@
 '''
 
 Gemma3 port of qwen/QwenUntargted_ChosenSingulaeVectorsStrictCutoff.py, applied
-on top of gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py.
+on top of gemma_attack/Gemma3_ChosenSingulaeVectorsStrictCutoff.py, with a
+more sophisticated TOP / MIDDLE / BOTTOM split-based importance-sampling
+selection rule replacing the old flat "cutoff over the whole spectrum" rule.
 
-Identical to GemmaUntargted_ChosenSingulaeVectors.py in every respect except
-ONE: the "always keep at least one singular vector per operator" fallback is
-removed. If nothing clears
-    weak_norm > standardDivCutOff * weak_norm.std()
-for a given operator, that operator is SKIPPED entirely (excluded from the
-loss for that step) instead of being forced to include its single
-most-sensitive direction via argmax(weak_norm).
-
+Identical to Gemma3_ChosenSingulaeVectorsStrictCutoff.py in every respect
+except how singular-vector indices are chosen inside run_importance_sampling.
 Everything else -- model loading (gemma3Inference.py conventions), target
 discovery (SigLIP vision tower with separate q/k/v/out_proj + fc1/fc2 MLP,
 Gemma3 language decoder with SwiGLU MLP + GQA with per-spec-derived head_dim,
-multi_modal_projector merger handling), full-basis SVD, importance sampling,
-Adam attack loop -- is unchanged from GemmaUntargted_ChosenSingulaeVectors.py.
+multi_modal_projector merger handling), full-basis SVD, Adam attack loop --
+is unchanged.
 
---standardDivCutOff is recorded in every output filename, same as before, but
-the output filename tag changes from "ChosenSingVecs" to
-"ChosenSingVecsStrictCutoff" to avoid collisions with the non-strict version.
+NEW SELECTION RULE (per targeted operator):
+
+  1. weak_norm (the same clean-vs-random-noise sensitivity curve as before,
+     one value per singular-vector index -- index 0 corresponds to the TOP
+     (largest-singular-value) direction, the last index to the BOTTOM
+     (smallest-singular-value / null-space) direction) is split into THREE
+     equal-length, contiguous chunks:
+
+         top    = weak_norm[0            : n//3]
+         middle = weak_norm[n//3         : 2*(n//3)]
+         bottom = weak_norm[2*(n//3)     : n]          (gets any remainder)
+
+  2. Each chunk is averaged: top_avg, middle_avg, bottom_avg.
+
+  3. If middle_avg is the largest of the three, the operator is SKIPPED
+     entirely for this step -- no singular vectors are sampled from it at
+     all (it contributes nothing to the loss).
+
+  4. Otherwise, whichever of top_avg / bottom_avg is larger identifies the
+     "winning" split, and singular-vector indices are selected using the
+     EXACT SAME criterion as before,
+
+         chosen_flat_idx = torch.where(weak_norm > cutoff)[0]
+
+     (with cutoff = standardDivCutOff * weak_norm.std(), computed over the
+     FULL weak_norm exactly as before), except the result is additionally
+     restricted to indices that fall inside the winning split. So if TOP
+     wins, only top-of-spectrum directions clearing the cutoff are used; if
+     BOTTOM wins, only bottom-of-spectrum (near-null-space) directions
+     clearing the cutoff are used. The middle third is never sampled from.
+
+  5. Consistent with the STRICT-cutoff philosophy this file is built on: if
+     the winning split has nothing clearing the cutoff, the operator is
+     still skipped entirely (no argmax-style fallback).
+
+  6. After importance sampling finishes for every operator, a SUMMARY is
+     printed listing, for every targeted operator: whether it was kept or
+     skipped (and why), which split (top/bottom) it was sampled from, and
+     how many singular vectors were chosen -- plus aggregate totals broken
+     down by split and by skip-reason.
+
+--standardDivCutOff is recorded in every output filename, same as before,
+but the output filename tag changes from "ChosenSingVecsStrictCutoff" to
+"ChosenSingVecsSplittedStrictCutoff" to avoid collisions with the
+non-split version.
 
 Example runs:
 
-export CUDA_VISIBLE_DEVICES=4
+export CUDA_VISIBLE_DEVICES=6
 conda deactivate
 cd spectralShift/
 conda activate gemma3
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python gemma_attack/Gemma3_ChosenSingulaeVectorsStrictCutoff.py --attck_type svisStrCut --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
+    python gemma_attack/Gemma3_ChosenSingulaeVectorsSplittedStrictCutoff.py --attck_type svisSplitStrCut --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
 done
 
-export CUDA_VISIBLE_DEVICES=3
+
+export CUDA_VISIBLE_DEVICES=7
 conda deactivate
 cd spectralShift/
 conda activate gemma3
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python gemma_attack/Gemma3_ChosenSingulaeVectorsStrictCutoff.py --attck_type svisStrCut --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
+    python gemma_attack/Gemma3_ChosenSingulaeVectorsSplittedStrictCutoff.py --attck_type svisSplitStrCut --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
 done
 
-export CUDA_VISIBLE_DEVICES=2
+
+export CUDA_VISIBLE_DEVICES=5
 conda deactivate
 cd spectralShift/
 conda activate gemma3
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python gemma_attack/Gemma3_ChosenSingulaeVectorsStrictCutoff.py --attck_type svisStrCut --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 20
+    python gemma_attack/Gemma3_ChosenSingulaeVectorsSplittedStrictCutoff.py --attck_type svisSplitStrCut --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 20
 done
-
-
-
 
 
 
 # Restrict to a subset of layers / fewer random noise varieties if desired:
-python gemma_attack/Gemma3_ChosenSingulaeVectorsStrictCutoff.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample 1 --standardDivCutOff 3 --numRandomVarieties 10 --chosenLanLayers 2 --chosenVisLayers 0 1 2 4 5 6 7 8 9 14 24
+python gemma_attack/Gemma3_ChosenSingulaeVectorsSplittedStrictCutoff.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample 1 --standardDivCutOff 3 --numRandomVarieties 10 --chosenLanLayers 2 --chosenVisLayers 0 1 2 4 5 6 7 8 9 14 24
+
 
 '''
 
@@ -269,7 +307,8 @@ def run_generation_with_pixel_values(model, processor, template_inputs, pixel_va
 
 
 # ============================================================
-# Chosen-singular-vector selected module attack for Gemma3 (STRICT cutoff)
+# Chosen-singular-vector selected module attack for Gemma3
+# (STRICT cutoff, TOP/MIDDLE/BOTTOM split-based selection)
 # ============================================================
 layer_inputs = {}
 
@@ -549,7 +588,7 @@ def _coeffs_against_full_vh(H, Vh, is_head):
 def getMeanAlignmentLossWithChosenSubspace(InputToLayer, chosenRightSingularVectors):
     """
     Same alignment-energy loss as
-    GemmaUntargted_ChosenSingulaeVectors.py's
+    Gemma3_ChosenSingulaeVectorsStrictCutoff.py's
     getMeanAlignmentLossWithChosenSubspace.
     """
     H = _flatten_tokens(InputToLayer)
@@ -565,15 +604,20 @@ def getMeanAlignmentLossWithChosenSubspace(InputToLayer, chosenRightSingularVect
 
 
 # ----------------------------
-# Importance sampling: pick singular-vector indices via the same
-# clean-vs-random-noise sensitivity criterion as
+# Importance sampling: pick singular-vector indices via a TOP/MIDDLE/BOTTOM
+# split of the same clean-vs-random-noise sensitivity criterion as
 # Qwen2p5SpectrumGuidedAttackSameSample.py's
 #   indices = torch.where(weak_norm > standardDivCutOff * weak_norm.std())[0]
 #
-# ONLY DIFFERENCE vs GemmaUntargted_ChosenSingulaeVectors.py: NO fallback.
-# If nothing clears the cutoff for a given operator, that operator is
-# skipped entirely (spec["target_vectors"] = None) instead of being forced
-# to include its single most-sensitive vector via argmax(weak_norm).
+# DIFFERENCE vs Gemma3_ChosenSingulaeVectorsStrictCutoff.py: weak_norm is
+# first split into three equal contiguous thirds -- top (largest singular
+# values), middle, and bottom (smallest/null-space) -- and averaged within
+# each third. If the middle third has the highest average, the operator is
+# skipped entirely (no sampling at all). Otherwise the winning third (top or
+# bottom, whichever has the higher average) is the ONLY region singular
+# vectors are allowed to be sampled from, using the same
+# `weak_norm > cutoff` criterion as before. If nothing in the winning third
+# clears the cutoff, the operator is still skipped (STRICT, no fallback).
 # ----------------------------
 def run_importance_sampling(
     model,
@@ -616,8 +660,11 @@ def run_importance_sampling(
 
     print(f"\n[INFO] Importance sampling: 1 clean pass + {numRandomVarieties} weak-noise "
           f"passes (epsilon={epsilon}) over {len(unique_hook_names)} hooked modules ...")
-    print(f"[INFO] STRICT cutoff mode: operators with nothing clearing "
-          f"weak_norm > {standardDivCutOff} * weak_norm.std() are SKIPPED entirely (no fallback).")
+    print(f"[INFO] STRICT cutoff mode with TOP/MIDDLE/BOTTOM splitting: weak_norm is split into "
+          f"three equal thirds (top, middle, bottom); if the middle third's average is highest, "
+          f"the operator is skipped; otherwise only the higher-average third (top or bottom) is "
+          f"searched for indices clearing weak_norm > {standardDivCutOff} * weak_norm.std() "
+          f"(no fallback if nothing in that third clears the cutoff).")
 
     clean_snapshot = run_one_pass(torch.zeros_like(x_orig01))
     if device.type == "cuda":
@@ -633,12 +680,22 @@ def run_importance_sampling(
     print("[INFO] Forward passes complete. Selecting importance-sampled singular-vector subspaces ...")
     print("\n========== CHOSEN SINGULAR-VECTOR SUBSPACES (ALL LAYER TYPES, ALL BLOCKS) ==========")
 
-    num_kept = 0
-    num_skipped = 0
+    num_kept_top = 0
+    num_kept_bottom = 0
+    num_skipped_middle = 0
+    num_skipped_empty_split = 0
+    num_skipped_too_small = 0
+    num_skipped_missing = 0
+    summary_rows = []
+
     for spec_i, spec in enumerate(target_specs):
         hn = spec["hook_name"]
         if hn not in clean_snapshot:
             spec["target_vectors"] = None
+            num_skipped_missing += 1
+            summary_rows.append(dict(kind=spec["kind"], layer_idx=spec["layer_idx"], sub_kind=spec["sub_kind"],
+                                      hook_name=hn, decision="skipped_no_activation_captured",
+                                      split_used=None, chosen=0))
             continue
 
         Vh = compute_full_vh_for_spec(spec).to(device)
@@ -662,24 +719,91 @@ def run_importance_sampling(
         weak_norm = weak_mean / (weak_mean_avg + 1e-12)
         cutoff = standardDivCutOff * weak_norm.std()
 
-        chosen_flat_idx = torch.where(weak_norm > cutoff)[0]
-
         layer_str = f"{spec['layer_idx']:3d}" if spec["layer_idx"] is not None else "N/A"
         head_tag = f"{Vh.shape[0]}heads x {n}" if spec["is_head"] else f"{n}"
 
-        if chosen_flat_idx.numel() == 0:
-            # No fallback: skip this operator entirely rather than forcing
-            # in its single most-sensitive vector.
+        # ---- TOP / MIDDLE / BOTTOM split of weak_norm ----
+        flat_len = weak_norm.shape[0]
+        third = flat_len // 3
+
+        if third == 0:
+            # Too few singular-vector directions (flat_len < 3) to form a
+            # non-empty 3-way split -- skip this operator entirely.
             spec["target_vectors"] = None
             spec["num_chosen"] = 0
-            num_skipped += 1
-
+            spec["chosen_split"] = None
+            num_skipped_too_small += 1
             print(
                 f"{spec['kind']:8s} | layer={layer_str} | {spec['sub_kind']:24s} | {hn} | "
-                f"full_basis={head_tag} | weak_norm.std={float(weak_norm.std().item()):.6f} "
-                f"| chosen=0 | SKIPPED (nothing above cutoff)"
+                f"full_basis={head_tag} | chosen=0 | SKIPPED (flat_len={flat_len} too small for a 3-way split)"
             )
+            summary_rows.append(dict(kind=spec["kind"], layer_idx=spec["layer_idx"], sub_kind=spec["sub_kind"],
+                                      hook_name=hn, decision="skipped_too_small_for_split",
+                                      split_used=None, chosen=0))
+            del Vh, H_clean, orig_coeffs, diffs
+            if device.type == "cuda" and spec_i % 8 == 0:
+                torch.cuda.empty_cache()
+            continue
 
+        top_slice = slice(0, third)
+        middle_slice = slice(third, 2 * third)
+        bottom_slice = slice(2 * third, flat_len)  # bottom absorbs any remainder
+
+        top_avg = weak_norm[top_slice].mean()
+        middle_avg = weak_norm[middle_slice].mean()
+        bottom_avg = weak_norm[bottom_slice].mean()
+
+        splits_str = (
+            f"top_avg={float(top_avg):.6f} mid_avg={float(middle_avg):.6f} bottom_avg={float(bottom_avg):.6f}"
+        )
+
+        if middle_avg > top_avg and middle_avg > bottom_avg:
+            # Middle third dominates: skip this operator entirely, no
+            # singular vectors sampled from it at all.
+            spec["target_vectors"] = None
+            spec["num_chosen"] = 0
+            spec["chosen_split"] = None
+            num_skipped_middle += 1
+            print(
+                f"{spec['kind']:8s} | layer={layer_str} | {spec['sub_kind']:24s} | {hn} | "
+                f"full_basis={head_tag} | {splits_str} | chosen=0 | SKIPPED (middle split average highest)"
+            )
+            summary_rows.append(dict(kind=spec["kind"], layer_idx=spec["layer_idx"], sub_kind=spec["sub_kind"],
+                                      hook_name=hn, decision="skipped_middle_split_highest",
+                                      split_used=None, chosen=0))
+            del Vh, H_clean, orig_coeffs, diffs
+            if device.type == "cuda" and spec_i % 8 == 0:
+                torch.cuda.empty_cache()
+            continue
+
+        if top_avg >= bottom_avg:
+            winning_split = "top"
+            winning_slice = top_slice
+        else:
+            winning_split = "bottom"
+            winning_slice = bottom_slice
+
+        split_mask = torch.zeros(flat_len, dtype=torch.bool, device=weak_norm.device)
+        split_mask[winning_slice] = True
+
+        above_cutoff_idx = torch.where(weak_norm > cutoff)[0]
+        chosen_flat_idx = above_cutoff_idx[split_mask[above_cutoff_idx]]
+
+        if chosen_flat_idx.numel() == 0:
+            # STRICT: no fallback -- if the winning split has nothing above
+            # the cutoff, skip this operator entirely.
+            spec["target_vectors"] = None
+            spec["num_chosen"] = 0
+            spec["chosen_split"] = winning_split
+            num_skipped_empty_split += 1
+            print(
+                f"{spec['kind']:8s} | layer={layer_str} | {spec['sub_kind']:24s} | {hn} | "
+                f"full_basis={head_tag} | winning_split={winning_split} | {splits_str} | chosen=0 | "
+                f"SKIPPED (nothing above cutoff within {winning_split} split)"
+            )
+            summary_rows.append(dict(kind=spec["kind"], layer_idx=spec["layer_idx"], sub_kind=spec["sub_kind"],
+                                      hook_name=hn, decision="skipped_no_vectors_in_winning_split",
+                                      split_used=winning_split, chosen=0))
             del Vh, H_clean, orig_coeffs, diffs
             if device.type == "cuda" and spec_i % 8 == 0:
                 torch.cuda.empty_cache()
@@ -694,21 +818,51 @@ def run_importance_sampling(
 
         spec["target_vectors"] = target_vectors.detach().clone()
         spec["num_chosen"] = int(chosen_flat_idx.numel())
-        num_kept += 1
+        spec["chosen_split"] = winning_split
+
+        if winning_split == "top":
+            num_kept_top += 1
+        else:
+            num_kept_bottom += 1
 
         print(
             f"{spec['kind']:8s} | layer={layer_str} | {spec['sub_kind']:24s} | {hn} | "
-            f"full_basis={head_tag} | weak_norm.std={float(weak_norm.std().item()):.6f} "
-            f"| chosen={spec['num_chosen']}"
+            f"full_basis={head_tag} | winning_split={winning_split} | {splits_str} | "
+            f"chosen={spec['num_chosen']}"
         )
+        summary_rows.append(dict(kind=spec["kind"], layer_idx=spec["layer_idx"], sub_kind=spec["sub_kind"],
+                                  hook_name=hn, decision="kept", split_used=winning_split,
+                                  chosen=spec["num_chosen"]))
 
         del Vh, H_clean, orig_coeffs, diffs
         if device.type == "cuda" and spec_i % 8 == 0:
             torch.cuda.empty_cache()
 
+    num_kept = num_kept_top + num_kept_bottom
+    num_skipped = num_skipped_middle + num_skipped_empty_split + num_skipped_too_small + num_skipped_missing
+
     print("=====================================================================================")
     print(f"Total targets with a chosen subspace: {num_kept} / {len(target_specs)}  (skipped: {num_skipped})")
     print("=====================================================================================\n")
+
+    # ---- Summary: which operators were considered, and from which split ----
+    print("========== SPLIT-SAMPLING SUMMARY (which operators kept, and from which split) ==========")
+    for row in summary_rows:
+        layer_str_s = f"{row['layer_idx']:3d}" if row["layer_idx"] is not None else "N/A"
+        split_str = row["split_used"] if row["split_used"] is not None else "-"
+        print(
+            f"{row['kind']:8s} | layer={layer_str_s} | {row['sub_kind']:24s} | {row['hook_name']} | "
+            f"decision={row['decision']:34s} | split={split_str:6s} | chosen={row['chosen']}"
+        )
+    print("-------------------------------------------------------------------------------------------")
+    print(f"Kept, sampled from TOP split:    {num_kept_top}")
+    print(f"Kept, sampled from BOTTOM split: {num_kept_bottom}")
+    print(f"Skipped (middle split average highest):            {num_skipped_middle}")
+    print(f"Skipped (winning split had nothing above cutoff):  {num_skipped_empty_split}")
+    print(f"Skipped (too few directions for a 3-way split):    {num_skipped_too_small}")
+    print(f"Skipped (no activation captured for this hook):    {num_skipped_missing}")
+    print(f"TOTAL kept: {num_kept} / {len(target_specs)}   TOTAL skipped: {num_skipped} / {len(target_specs)}")
+    print("=============================================================================================\n")
 
     del clean_snapshot, weak_snapshots
     if device.type == "cuda":
@@ -896,7 +1050,7 @@ def adam_attack_original_space(
 # ----------------------------
 def main():
     parser = argparse.ArgumentParser(
-        description="Gemma3 ORIGINAL-image-space adversarial attack, importance-sampled singular-vector subspaces, ALL layer types, ALL blocks, STRICT cutoff (no fallback -- unmet operators are skipped)"
+        description="Gemma3 ORIGINAL-image-space adversarial attack, importance-sampled singular-vector subspaces, ALL layer types, ALL blocks, STRICT cutoff with TOP/MIDDLE/BOTTOM split-based selection"
     )
     parser.add_argument("--attck_type", type=str, default="grill_l2", help="kept for compatibility")
     parser.add_argument("--desired_norm_l_inf", type=float, default=0.03, help="epsilon L_inf in ORIGINAL pixel space [0..1]")
@@ -914,11 +1068,13 @@ def main():
         help=(
             "Singular-vector indices are kept where "
             "weak_norm > standardDivCutOff * weak_norm.std(), exactly as in "
-            "Qwen2p5SpectrumGuidedAttackSameSample.py, and the resulting "
-            "importance-sampled singular vectors span the target subspace. "
-            "UNLIKE GemmaUntargted_ChosenSingulaeVectors.py, there is no "
-            "fallback here: an operator with nothing clearing the cutoff is "
-            "skipped entirely rather than being forced to include one vector."
+            "Qwen2p5SpectrumGuidedAttackSameSample.py, EXCEPT the search is "
+            "restricted to whichever third of the spectrum (top or bottom) "
+            "has the higher average weak_norm -- see the top-of-file "
+            "docstring for the full TOP/MIDDLE/BOTTOM split rule. If the "
+            "middle third has the highest average, or if nothing in the "
+            "winning third clears the cutoff, the operator is skipped "
+            "entirely (no fallback)."
         ),
     )
     parser.add_argument(
@@ -1009,14 +1165,17 @@ def main():
     model.eval()
     model.config.use_cache = False
 
-    print("\n[INFO] Gemma3 ALL-layer, ALL-block, CHOSEN-singular-vector variant (STRICT cutoff).")
+    print("\n[INFO] Gemma3 ALL-layer, ALL-block, CHOSEN-singular-vector variant (STRICT cutoff,")
+    print("[INFO] TOP/MIDDLE/BOTTOM split-based selection).")
     print("[INFO] For every q/k/v/o and MLP projection in every vision block, every")
-    print("[INFO] language layer, and the multi_modal_projector, singular-vector")
-    print("[INFO] indices are importance-sampled via the clean-vs-random-noise")
-    print("[INFO] sensitivity criterion from Qwen2p5SpectrumGuidedAttackSameSample.py,")
-    print("[INFO] then used to span the alignment target subspace.")
-    print("[INFO] Unlike GemmaUntargted_ChosenSingulaeVectors.py, there is NO fallback:")
-    print("[INFO] operators with nothing above the cutoff are SKIPPED entirely.")
+    print("[INFO] language layer, and the multi_modal_projector, weak_norm (the")
+    print("[INFO] clean-vs-random-noise sensitivity curve from Qwen2p5SpectrumGuidedAttackSameSample.py)")
+    print("[INFO] is split into three equal thirds -- top, middle, bottom. If the")
+    print("[INFO] middle third's average is highest, the operator is skipped entirely.")
+    print("[INFO] Otherwise singular vectors are sampled ONLY from whichever of top/bottom")
+    print("[INFO] has the higher average, using weak_norm > standardDivCutOff * weak_norm.std().")
+    print("[INFO] No fallback: if the winning third has nothing above the cutoff, the")
+    print("[INFO] operator is skipped entirely.")
     print(f"[INFO] chosenLanLayers={chosenLanLayers if chosenLanLayers is not None else 'ALL (0-33)'}")
     print(f"[INFO] chosenVisLayers={chosenVisLayers if chosenVisLayers is not None else 'ALL (0-26)'}")
     print(f"[INFO] includeMerger={includeMerger}")
@@ -1048,7 +1207,7 @@ def main():
         f"gemma_ORIG_attack_{attck_type}_lr_{lr}_eps_{epsilon}_"
         f"AttackStartLayer_{AttackStartLayer}_numLayerstAtAtime_{numLayerstAtAtime}_"
         f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_numRandomVarieties_{numRandomVarieties}_"
-        f"ChosenSingVecsStrictCutoff_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.npy"
+        f"ChosenSingVecsSplittedStrictCutoff_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.npy"
     )
 
     x_adv01, best_pert = adam_attack_original_space(
@@ -1076,7 +1235,7 @@ def main():
         f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_"
         f"AttackStartLayer_{AttackStartLayer}_numLayerstAtAtime_{numLayerstAtAtime}_"
         f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_numRandomVarieties_{numRandomVarieties}_"
-        f"ChosenSingVecsStrictCutoff_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.png"
+        f"ChosenSingVecsSplittedStrictCutoff_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.png"
     )
 
     adv_noise_path = (
@@ -1084,7 +1243,7 @@ def main():
         f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_"
         f"AttackStartLayer_{AttackStartLayer}_numLayerstAtAtime_{numLayerstAtAtime}_"
         f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_numRandomVarieties_{numRandomVarieties}_"
-        f"ChosenSingVecsStrictCutoff_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.pt"
+        f"ChosenSingVecsSplittedStrictCutoff_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.pt"
     )
 
     tensor01_to_pil(x_adv01).save(adv_img_path)
@@ -1112,7 +1271,7 @@ def main():
         f"advOutput_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_"
         f"AttackStartLayer_{AttackStartLayer}_numLayerstAtAtime_{numLayerstAtAtime}_"
         f"num_steps_{num_steps}_standardDivCutOff_{standardDivCutOff}_numRandomVarieties_{numRandomVarieties}_"
-        f"ChosenSingVecsStrictCutoff_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.txt"
+        f"ChosenSingVecsSplittedStrictCutoff_lan-{lanLayersTag}_vis-{visLayersTag}_merger-{includeMerger}.txt"
     )
     with open(advOutTxt, "w") as f:
         f.write(adv_text + "\n")
