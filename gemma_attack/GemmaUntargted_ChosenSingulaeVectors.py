@@ -82,34 +82,34 @@ version.
 
 Example runs:
 
-export CUDA_VISIBLE_DEVICES=7
+export CUDA_VISIBLE_DEVICES=2
 conda deactivate
 cd spectralShift/
 conda activate gemma3
 export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 3
+for ATTACK_SAMPLE in $(seq 33 50); do
+    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 3
 done
 
 
 
-export CUDA_VISIBLE_DEVICES=6
+export CUDA_VISIBLE_DEVICES=3
 conda deactivate
 cd spectralShift/
 conda activate gemma3
 export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
+for ATTACK_SAMPLE in $(seq 33 50); do
+    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
 done
 
 
-export CUDA_VISIBLE_DEVICES=5
+export CUDA_VISIBLE_DEVICES=4
 conda deactivate
 cd spectralShift/
 conda activate gemma3
 export PYTHONNOUSERSITE=1
-for ATTACK_SAMPLE in $(seq 1 50); do
-    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
+for ATTACK_SAMPLE in $(seq 33 50); do
+    python gemma_attack/GemmaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
 done
 
 
