@@ -11,7 +11,7 @@ cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
+    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.004 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
 done
 
 export CUDA_VISIBLE_DEVICES=3
@@ -20,7 +20,7 @@ cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0035 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
+    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.004 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
 done
 
 
@@ -30,7 +30,7 @@ cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.002 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
+    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0045 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
 done
 
 export CUDA_VISIBLE_DEVICES=1
@@ -39,7 +39,7 @@ cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.002 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
+    python qwen/QwenUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0045 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
 done
 
 
