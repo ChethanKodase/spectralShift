@@ -82,8 +82,19 @@ export CUDA_VISIBLE_DEVICES=2
 cd spectralShift/
 conda activate llava15
 for ATTACK_SAMPLE in $(seq 1 50); do
-    python llava_attack/LlavaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
+    python llava_attack/LlavaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0045 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 4
 done
+
+
+
+export CUDA_VISIBLE_DEVICES=3
+cd spectralShift/
+conda activate llava15
+for ATTACK_SAMPLE in $(seq 1 50); do
+    python llava_attack/LlavaUntargted_ChosenSingulaeVectors.py --attck_type ImpSamp --desired_norm_l_inf 0.0045 --learningRate 0.001 --num_steps 1000 --attackSample $ATTACK_SAMPLE --AttackStartLayer 0 --numLayerstAtAtime 1 --standardDivCutOff 5
+done
+
+
 
 # Restrict to a subset of layers / fewer random noise varieties if desired:
 python llava_attack/LlavaUntargted_ChosenSingulaeVectors.py --attck_type saa_loop --desired_norm_l_inf 0.0025 --learningRate 0.001 --num_steps 1000 --attackSample 1 --standardDivCutOff 3 --numRandomVarieties 10 --chosenLanLayers 2 --chosenVisLayers 0 1 2 4 5 6 7 8 9 14 24
