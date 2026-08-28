@@ -21,3 +21,12 @@ gemma_attack/OverlapDistancesAvgStdBandsNormalized/
 gemma_attack/OverlapDistancesAvgStdBands_backUp/
 gemma_attack/OverlapDistancesAvg_backUp/
 llava_attack/outputsStorageImagenet/
+qwen/DetechScores/
+qwen/OverlapDistancesAvg0/
+qwen/OverlapDistancesAvgDet/
+qwen/OverlapDistancesAvgStdBands0/
+qwen/OverlapDistancesAvgStdBandsDet/
+qwen/OverlapDistancesAvgStdBandsNormalized0/
+qwen/OverlapDistancesAvgStdBandsNormalizedDet/
+qwen/allProbMaxes/
+qwen/backUps/
