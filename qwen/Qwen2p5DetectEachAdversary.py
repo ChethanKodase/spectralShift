@@ -49,13 +49,27 @@ done
 
 ---------------------------------------------------------------------------
 
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=0
 conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan
+
+
+export CUDA_VISIBLE_DEVICES=1
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan
+
+
+export CUDA_VISIBLE_DEVICES=2
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan
 
 
@@ -1120,6 +1134,7 @@ def main():
     #for attackSample in range(1,51):
         countAdvChance = 0
         probMax = 0
+        #attackSample = 39 # check
         for LanLayerTrack in range(28):
         #for LanLayerTrack in range(2):
 
@@ -1271,7 +1286,13 @@ def main():
 
             PostAttackAlignments = []
 
-            IMAGE_PATH = f"../interpretAttacks/llava_attack/dataSamplesForQuant/{attackSample}.JPEG"
+            #IMAGE_PATH = f"../interpretAttacks/llava_attack/dataSamplesForQuant/{attackSample}.JPEG"
+
+            if attackSample == 39:
+                IMAGE_PATH = f"../interpretAttacks/llava_attack/dataSamplesForQuant/{attackSample}s.JPEG"        
+            else:
+                IMAGE_PATH = f"../interpretAttacks/llava_attack/dataSamplesForQuant/{attackSample}.JPEG"
+
 
 
             pil = Image.open(IMAGE_PATH).convert("RGB")
@@ -1462,9 +1483,9 @@ def main():
                 break
         perAttackSampleProbMaxes.append(probMax.item())
 
-    print("perAttackSampleProbMaxes", perAttackSampleProbMaxes)
+        print("perAttackSampleProbMaxes", perAttackSampleProbMaxes)
 
-    np.save(f"qwen/allProbMaxes/perAttackSampleProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_.npy", np.array(perAttackSampleProbMaxes))
+        np.save(f"qwen/allProbMaxes/perAttackSampleProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_.npy", np.array(perAttackSampleProbMaxes))
 
 
 if __name__ == "__main__":
