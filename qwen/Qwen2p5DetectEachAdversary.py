@@ -1130,7 +1130,7 @@ def main():
 
 
     perAttackSampleProbMaxes = []
-    for attackSample in range(1,51):
+    for attackSample in range(1,101):
     #for attackSample in range(1,51):
         countAdvChance = 0
         probMax = 0
