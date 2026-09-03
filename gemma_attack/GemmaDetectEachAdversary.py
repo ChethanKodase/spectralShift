@@ -3,7 +3,7 @@
 '''
 
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=7
 conda activate gemma3
 cd spectralShift
 python gemma_attack/GemmaDetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan
@@ -1267,7 +1267,7 @@ def main():
                 )
 
 
-            best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype) * 0
+            best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype) #* 0
 
 
             x_adv01, best_pert, RightSingularInputAlignmentAgainstAdversary, FlattenedAlignmentDistributionsAdversary = adam_attack_original_space(
