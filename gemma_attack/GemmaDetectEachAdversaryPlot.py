@@ -138,9 +138,21 @@ def main():
 
     ega_ratio = float(args.ega_ratio)
 
-    testIt = np.load(f"gemma_attack/allProbMaxes/perAttackSampleProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_.npy")
+    DetProMax = np.load(f"gemma_attack/allProbMaxes/perAttackSampleProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_.npy")
 
-    print("testIt", testIt)
+    print("testIt", DetProMax)
+
+
+    print("DetProMax[DetProMax>0.6]", [DetProMax>0.9])
+
+    predictedNum = np.sum([DetProMax>0.6])
+
+    AllNum = len(DetProMax)
+
+    print("DetProMax", DetProMax)
+    print("predictedNum", predictedNum)
+    print("AllNum", AllNum)
+
 
 if __name__ == "__main__":
     main()
