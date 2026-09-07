@@ -2,67 +2,19 @@
 
 '''
 
-export CUDA_VISIBLE_DEVICES=0
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for StudyLayer in $(seq 0 27); do
-    python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack $StudyLayer --kthSingVec -10 --attackMode lan --attackSample 2
-done
-
-
-
-
-export CUDA_VISIBLE_DEVICES=1
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for StudyLayer in $(seq 0 31); do
-    python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack $StudyLayer --LanLayerTrack 0 --kthSingVec 10 --attackMode vis --attackSample 2
-done
-
-
-
-
-export CUDA_VISIBLE_DEVICES=2
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for StudyLayer in $(seq 0 27); do
-    python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.5 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack 0 --LanLayerTrack $StudyLayer --kthSingVec -10 --attackMode lan --attackSample 2
-done
-
-
-
-
-export CUDA_VISIBLE_DEVICES=3
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-for StudyLayer in $(seq 0 31); do
-    python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.5 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --VisionLayerTrack $StudyLayer --LanLayerTrack 0 --kthSingVec 10 --attackMode vis --attackSample 2
-done
 
 ---------------------------------------------------------------------------
 
-export CUDA_VISIBLE_DEVICES=0
-conda deactivate
-cd spectralShift/
-conda activate vlmAttack
-export PYTHONNOUSERSITE=1
-python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan
-
-
 export CUDA_VISIBLE_DEVICES=1
 conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
-python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.001 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.003 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.004 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
 
 
 export CUDA_VISIBLE_DEVICES=2
@@ -70,7 +22,51 @@ conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
-python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.001 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.002 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.003 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.004 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+
+
+export CUDA_VISIBLE_DEVICES=2
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.001 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.002 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.003 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.004 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+
+export CUDA_VISIBLE_DEVICES=0
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_l_inf 0.004 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_l_inf 0.003 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_l_inf 0.001 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+
+
+
+ : BSA Adv local var 
+
+epsilon        : justNoise local var   : BSA local var              :        NLL local var          :   EGA local var 
+
+epsilon 0.001 : 0.019627340137958527   : 0.019666291773319244       :   0.019666291773319244        :   0.019668713212013245
+
+epsilon 0.002 : 0.019659366458654404   : 0.019718315452337265       :   0.019718315452337265        :   0.01973733678460121
+
+epsilon 0.003 : 0.01969139091670513    : 0.01986018754541874        :   0.01986018754541874         :   0.019885443150997162
+
+epsilon 0.004 : 0.01972348801791668    : 0.02003267966210842        :   0.02003267966210842         :   0.020071856677532196
+
+epsilon 0.005 : 0.01975635066628456    : 0.020276807248592377         :   0.020276807248592377        :   0.02022310346364975
+
 
 
 '''
@@ -505,6 +501,54 @@ def get_language_module_and_layers(model):
         raise RuntimeError("Could not find Qwen2.5-VL language-model layers.")
 
 
+def getImageLocalVar(x_ad):
+    dx = x_ad[:, :, :, 1:] - x_ad[:, :, :, :-1]
+    dy = x_ad[:, :, 1:, :] - x_ad[:, :, :-1, :]
+    ObLocVar = (dx.abs().mean() + dy.abs().mean()) / 2
+    return ObLocVar
+
+
+'''def getStableobserved_local_var(x_orig01, epsilon, times):
+    collectobserved_local_var = []
+    for i in range(times):
+
+        checkItthatWay = torch.randn_like(x_orig01)
+        checkItthatWayNormal = 2 * (checkItthatWay - checkItthatWay.min()) / (checkItthatWay.max() - checkItthatWay.min()) - 1
+
+        justNoiseHere = checkItthatWayNormal * epsilon
+
+        x_adv01 = (x_orig01 + justNoiseHere).clamp(0.0, 1.0)
+        x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
+
+        observed_local_var = getImageLocalVar(x_adv01)
+
+        collectobserved_local_var.append(observed_local_var.item())
+
+    collectobserved_local_varArr = np.array(collectobserved_local_var)
+    collectobserved_local_varArrMean = np.mean(collectobserved_local_varArr)
+    return collectobserved_local_varArrMean'''
+
+
+def getImageLocalVarListPerPerturbation(x_orig01, Start, End, NumPts):
+    obLocVarList = []
+    AllEpsilon = np.linspace(Start, End, NumPts)
+    #print("AllEpsilon", AllEpsilon)
+    for eps in AllEpsilon:
+        checkItthatWay = torch.randn_like(x_orig01)
+        checkItthatWayNormal = 2 * (checkItthatWay - checkItthatWay.min()) / (checkItthatWay.max() - checkItthatWay.min()) - 1
+        justNoiseHere = checkItthatWayNormal * eps
+        x_adv01 = (x_orig01 + justNoiseHere).clamp(0.0, 1.0)
+        x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + eps), x_orig01 - eps).clamp(0.0, 1.0)
+        observed_local_var = getImageLocalVar(x_adv01)
+        #observed_local_var = getStableobserved_local_var(x_orig01, eps, 1)
+        #print("observed_local_var", observed_local_var.item())
+        obLocVarList.append(observed_local_var.item())
+    obLocVarListArr = np.array(obLocVarList)
+    return obLocVarListArr, AllEpsilon
+
+
+
+
 def _resolve_vision_config(model):
     cfg = model.config
     return getattr(cfg, "vision_config", cfg)
@@ -726,14 +770,39 @@ def adam_attack_original_space(
 
 
 
-    x_adv01 = (x_orig01 + delta).clamp(0.0, 1.0)
-    x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
+
+    if attck_type == "justNoise":
+        checkItthatWay = torch.randn_like(x_orig01)
+        checkItthatWayNormal = 2 * (checkItthatWay - checkItthatWay.min()) / (checkItthatWay.max() - checkItthatWay.min()) - 1
+
+        justNoiseHere = checkItthatWayNormal * epsilon
+
+        x_adv01 = (x_orig01 + justNoiseHere).clamp(0.0, 1.0)
+        x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
+
+        x_adv01_created = x_adv01
+
+
+    else:
+        x_adv01 = (x_orig01 + delta).clamp(0.0, 1.0)
+        x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
+        x_adv01_created = x_adv01
 
     if whatKindOfAdversary == "weakened":
-        #thickEpsilon = 0.05
-        weak_delta = torch.randn_like(best_delta) * thickEpsilon
-        x_adv01 = (x_adv01 + weak_delta).clamp(0.0, 1.0)
-        x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + thickEpsilon), x_orig01 - thickEpsilon).clamp(0.0, 1.0)
+
+        #x_adv01 = (x_orig01 + delta).clamp(0.0, 1.0)
+        #x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
+
+        checkItthatWay = torch.randn_like(x_adv01)
+        checkItthatWayNormal = 2 * (checkItthatWay - checkItthatWay.min()) / (checkItthatWay.max() - checkItthatWay.min()) - 1
+
+        #weak_delta = torch.randn_like(best_delta) * thickEpsilon
+
+        weak_delta = checkItthatWayNormal * thickEpsilon
+
+        x_adv01 = (x_adv01_created + weak_delta).clamp(0.0, 1.0)
+        x_adv01 = torch.max(torch.min(x_adv01, x_adv01_created + thickEpsilon), x_adv01_created - thickEpsilon).clamp(0.0, 1.0)
+        
 
 
     # preprocess adv (must be differentiable)
@@ -945,8 +1014,10 @@ def main():
                     help="Amonhg the k singular vectors which one do you wanty")
     parser.add_argument("--attackMode", type=str, default="lan",
                     help="Which layer were attacked vis or lan")
-
-
+    parser.add_argument("--detectionThreshold", type=float, default=0.98,
+                        help="Adam learning rate")
+    #parser.add_argument("--ignoreThreshold", type=float, default=0.1,
+    #                    help="Adam learning rate")
 
     args = parser.parse_args()
 
@@ -964,7 +1035,8 @@ def main():
 
     kthSingVec = int(args.kthSingVec)
     attackMode = str(args.attackMode)
- 
+    detectionThreshold = float(args.detectionThreshold)
+    #ignoreThreshold = float(args.ignoreThreshold)
 
     MODEL_PATH = "../illcond/QwenAttack/Qwen2.5-VL-7B-Instruct"
     QUESTION = "What is shown in this image?"
@@ -1129,11 +1201,21 @@ def main():
         return query_vh_per_head
 
 
+    NumCountsSet = 4
     perAttackSampleProbMaxes = []
+    perAttackSampleProbMins = []
+
+    NumTimesYouHitTheMarkPerSample = []
     for attackSample in range(1,101):
     #for attackSample in range(1,51):
         countAdvChance = 0
-        probMax = 0
+        countIgnore = 0
+        NumTimesYouHitTheMark = 0
+        NumTimesYouHit = 0
+
+        probMax = torch.tensor(0.0, device=device)
+        probMin = torch.tensor(1.0, device=device)
+
         #attackSample = 39 # check
         for LanLayerTrack in range(28):
         #for LanLayerTrack in range(2):
@@ -1288,7 +1370,7 @@ def main():
 
             #IMAGE_PATH = f"../interpretAttacks/llava_attack/dataSamplesForQuant/{attackSample}.JPEG"
 
-            if attackSample == 39:
+            if attackSample == 39 or attackSample == 58:
                 IMAGE_PATH = f"../interpretAttacks/llava_attack/dataSamplesForQuant/{attackSample}s.JPEG"        
             else:
                 IMAGE_PATH = f"../interpretAttacks/llava_attack/dataSamplesForQuant/{attackSample}.JPEG"
@@ -1326,9 +1408,14 @@ def main():
                     f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
                     f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_ratio_{ega_ratio}.pt"
                 )
+            else:
+                attck_typeTemp = "bsa"
+                adv_noise_path = (
+                    f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
+                    f"adv_ORIG_attackType_{attck_typeTemp}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_.pt"
+                )
 
-
-            best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype) * 0
+            best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype) #* 0
 
 
             x_adv01, best_pert, RightSingularInputAlignmentAgainstAdversary, FlattenedAlignmentDistributionsAdversary = adam_attack_original_space(
@@ -1429,9 +1516,9 @@ def main():
             DiffStrongThisSample = []
             DiffWeakThisSample = []
             for i in range(len(FlattenedAlignmentDistributionsOriginal)):
-                orig_c = FlattenedAlignmentDistributionsOriginal[i]
-                adv_c = FlattenedAlignmentDistributionsAdversary[i]
-                weak_c = FlattenedAlignmentDistributionsWeak[i]
+                orig_c = FlattenedAlignmentDistributionsOriginal[i]#.float()
+                adv_c = FlattenedAlignmentDistributionsAdversary[i]#.float()
+                weak_c = FlattenedAlignmentDistributionsWeak[i]#.float()
 
                 token_dim = 0 if orig_c.dim() == 2 else 1
 
@@ -1459,34 +1546,65 @@ def main():
                 weak = (weak)
                 strong = (strong)
 
+                if torch.sum(strong==weak) / len(strong) == 1.0:
+                    print("strong and weak are exactly the same")
 
-                #print("weak.shape", weak.shape)
+                #print("weak", weak)
+                #print("strong", strong)
 
                 #print("strong.shape", strong.shape)
                 probs = torch.sum(strong>weak) / len(strong)
-                if probs > probMax:
+                #print("probs", probs)
+                if probs >= probMax:
                     probMax = probs#.copy_()
+
+                if probs < probMin:
+                    probMin = probs#.copy_()
+                    
                 #curDetScore = probs * 100
                 print(f"attackSample: {attackSample}, LanLayerTrack: {LanLayerTrack}, probs: {probs}, probMax: {probMax}")
+                NumTimesYouHit+=1
+                if probs > detectionThreshold:
+                    #countAdvChance +=1
+                    NumTimesYouHitTheMark+=1
 
-                if probs > 0.9:
-                    countAdvChance +=1
+                '''if probs < ignoreThreshold:
+                    countIgnore +=1'''
 
-                if countAdvChance > 4:
-                    break
+                '''if countAdvChance > NumCountsSet:
+                    break'''
+                '''if countIgnore > NumCountsSet:
+                    break'''
 
-
-            if countAdvChance > 4:
+            '''if countAdvChance > NumCountsSet:
                 print(f"attackSample {attackSample} is an adversary")
                 print(f"Found while tracking {LanLayerTrack}")
                 print()
                 break
+            if countIgnore > NumCountsSet:
+                print(f"attackSample {attackSample} is not an adversary")
+                print(f"Found while tracking {LanLayerTrack}")
+                print()
+                break'''
+
         perAttackSampleProbMaxes.append(probMax.item())
+        perAttackSampleProbMins.append(probMin.item())
+
+        print("NumTimesYouHitTheMark", NumTimesYouHitTheMark)
+
+        print("NumTimesYouHit", NumTimesYouHit)
+
+        hittingPercentage = NumTimesYouHitTheMark/NumTimesYouHit
+        print("hittingPercentage", hittingPercentage)
+        NumTimesYouHitTheMarkPerSample.append(NumTimesYouHitTheMark)
 
         print("perAttackSampleProbMaxes", perAttackSampleProbMaxes)
+        print("perAttackSampleProbMins", perAttackSampleProbMins)
+        print("NumTimesYouHitTheMarkPerSample", NumTimesYouHitTheMarkPerSample)
 
-        np.save(f"qwen/allProbMaxes/perAttackSampleProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_.npy", np.array(perAttackSampleProbMaxes))
-
+    np.save(f"qwen/allProbMaxes/ProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy", np.array(perAttackSampleProbMaxes))
+    np.save(f"qwen/allProbMaxes/ProbMins_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy", np.array(perAttackSampleProbMins))
+    np.save(f"qwen/allProbMaxes/ChancesYouHit_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy", np.array(NumTimesYouHitTheMarkPerSample))
 
 if __name__ == "__main__":
     main()

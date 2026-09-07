@@ -8,9 +8,15 @@ conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
-python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --attackMode lan --attackSample 50
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.1 --attackMode lan --attackSample 100 --detectionThreshold 0.97 --ignoreThreshold 0.1
 
-python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --attackMode lan --attackSample 50
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --attackMode lan --attackSample 100 --detectionThreshold 0.97 --ignoreThreshold 0.1
+
+
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --attackMode lan --attackSample 100 --detectionThreshold 0.97 --ignoreThreshold 0.1
+
+
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --attackMode lan --attackSample 100 --detectionThreshold 0.97 --ignoreThreshold 0.1
 
 '''
 
@@ -57,7 +63,10 @@ def main():
 
     parser.add_argument("--attackMode", type=str, default="lan",
                     help="Which layer were attacked vis or lan")
-
+    parser.add_argument("--detectionThreshold", type=float, default=0.98,
+                        help="Adam learning rate")
+    parser.add_argument("--ignoreThreshold", type=float, default=0.1,
+                        help="Adam learning rate")
 
 
     args = parser.parse_args()
@@ -68,21 +77,33 @@ def main():
     attackSample = int(args.attackSample)
 
     attackMode = str(args.attackMode)
- 
+    detectionThreshold = float(args.detectionThreshold)
+    ignoreThreshold = float(args.ignoreThreshold)
 
 
 
-    DetProMax = np.load(f"qwen/allProbMaxes/perAttackSampleProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_.npy")
+    DetProMax = np.load(f"qwen/allProbMaxes/ProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}_ignoreThreshold_{ignoreThreshold}.npy")
 
-    print("DetProMax[DetProMax>0.6]", [DetProMax>0.9])
+    DetProMin = np.load(f"qwen/allProbMaxes/ProbMins_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}_ignoreThreshold_{ignoreThreshold}.npy")
 
-    predictedNum = np.sum([DetProMax>0.6])
+    #print("DetProMax[DetProMax>0.6]", [DetProMax>0.9])
+
+    predictedToBeAdversaryNum = np.sum([DetProMax>0.97])
+
+    predictedToBeNormalNum = np.sum([DetProMax<0.97])
 
     AllNum = len(DetProMax)
 
     print("DetProMax", DetProMax)
-    print("predictedNum", predictedNum)
-    print("AllNum", AllNum)
+
+    print("DetProMin", DetProMin)
+
+    print("predictedToBeAdversaryNum", predictedToBeAdversaryNum/AllNum)
+
+
+    print("predictedToBeNormalNum", predictedToBeNormalNum/AllNum)
+
+
 
 
 if __name__ == "__main__":

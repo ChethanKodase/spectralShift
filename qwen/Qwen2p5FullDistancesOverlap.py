@@ -2,7 +2,7 @@
 
 '''
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=3
 conda deactivate
 cd spectralShift/
 conda activate vlmAttack
@@ -1263,14 +1263,16 @@ def main():
         )
 
         best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype)
-
+        print("best_delta.max()", best_delta.max())
+        print("best_delta.min()", best_delta.min())
         # MODIFIED: build a "weak adversary" - gaussian noise scaled to the same
         # L_inf epsilon bound as the trained ("strong") adversary. The clamping
         # inside adam_attack_original_space (x_orig01 +/- epsilon) applies to
         # whatever delta is passed in, so this receives the exact same L_inf
         # bound treatment as best_delta.
         weak_delta = torch.randn_like(best_delta) * epsilon
-
+        print("weak_delta.max()", weak_delta.max())
+        print("weak_delta.min()", weak_delta.min())
         x_adv01, best_pert, RightSingularInputAlignmentAgainstAdversary, FlattenedAlignmentDistributionsAdversary = adam_attack_original_space(
             model=model,
             processor=processor,
