@@ -29,7 +29,7 @@ python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
 
 
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=3
 conda deactivate
 cd spectralShift/
 conda activate vlmAttack
