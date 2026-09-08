@@ -18,6 +18,40 @@ python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l
 
 python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --attackMode lan --attackSample 100 --detectionThreshold 0.97 --ignoreThreshold 0.1
 
+
+
+export CUDA_VISIBLE_DEVICES=1
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.9 --attackSample 100
+
+
+export CUDA_VISIBLE_DEVICES=2
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.002 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.9 --attackSample 100
+
+
+export CUDA_VISIBLE_DEVICES=3
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.002 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.9 --attackSample 100
+
+
+export CUDA_VISIBLE_DEVICES=0
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.9 --attackSample 100
+
+
 '''
 
 
@@ -82,29 +116,21 @@ def main():
 
 
 
-    DetProMax = np.load(f"qwen/allProbMaxes/ProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}_ignoreThreshold_{ignoreThreshold}.npy")
+    #DetProMax = np.load(f"qwen/allProbMaxes/ProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}_ignoreThreshold_{ignoreThreshold}.npy")
 
-    DetProMin = np.load(f"qwen/allProbMaxes/ProbMins_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}_ignoreThreshold_{ignoreThreshold}.npy")
+    #DetProMin = np.load(f"qwen/allProbMaxes/ProbMins_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}_ignoreThreshold_{ignoreThreshold}.npy")
 
-    #print("DetProMax[DetProMax>0.6]", [DetProMax>0.9])
+    NumTimesYouHitTheMarkPerSample = np.load(f"qwen/allProbMaxes/ChancesYouHit_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy")
 
-    predictedToBeAdversaryNum = np.sum([DetProMax>0.97])
+    NumSamples = 168
 
-    predictedToBeNormalNum = np.sum([DetProMax<0.97])
+    print("NumTimesYouHitTheMarkPerSample", NumTimesYouHitTheMarkPerSample)
 
-    AllNum = len(DetProMax)
+    chancesYouHitmark = NumTimesYouHitTheMarkPerSample/NumSamples
 
-    print("DetProMax", DetProMax)
+    NunTruePositives = np.sum(chancesYouHitmark>0.6)
 
-    print("DetProMin", DetProMin)
-
-    print("predictedToBeAdversaryNum", predictedToBeAdversaryNum/AllNum)
-
-
-    print("predictedToBeNormalNum", predictedToBeNormalNum/AllNum)
-
-
-
+    print("NunTruePositives", NunTruePositives)
 
 if __name__ == "__main__":
     main()
