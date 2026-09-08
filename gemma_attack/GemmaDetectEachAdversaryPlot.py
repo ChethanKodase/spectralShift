@@ -21,6 +21,44 @@ cd spectralShift
 python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.05 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --attackSample 50
 
 
+
+export CUDA_VISIBLE_DEVICES=3
+conda activate gemma3
+cd spectralShift
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+
+
+
+export CUDA_VISIBLE_DEVICES=4
+conda activate gemma3
+cd spectralShift
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+
+
+export CUDA_VISIBLE_DEVICES=5
+conda activate gemma3
+cd spectralShift
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.9
+
+
+export CUDA_VISIBLE_DEVICES=6
+conda activate gemma3
+cd spectralShift
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+
+
 '''
 
 
@@ -122,8 +160,8 @@ def main():
     # hard-codes it locally.
     parser.add_argument("--ega_ratio", type=float, default=0.2,
                     help="ega_ratio used when locating an EGA adv_noise_path")
-
-
+    parser.add_argument("--detectionThreshold", type=float, default=0.98,
+                        help="Adam learning rate")
 
     args = parser.parse_args()
 
@@ -138,21 +176,23 @@ def main():
 
     ega_ratio = float(args.ega_ratio)
 
-    DetProMax = np.load(f"gemma_attack/allProbMaxes/perAttackSampleProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_.npy")
+    detectionThreshold = float(args.detectionThreshold)
+    NumTimesYouHit = 204
+    #DetProMax = np.load(f"gemma_attack/allProbMaxes/perAttackSampleProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_.npy")
 
-    print("testIt", DetProMax)
+
+    NumTimesYouHitTheMarkPerSample = np.load(f"gemma_attack/allProbMaxes/ChancesYouHit_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy")
+    percentageYouHitmark = NumTimesYouHitTheMarkPerSample/NumTimesYouHit
+    #print("percentageYouHitmark", percentageYouHitmark)
+
+    numAdversaries = np.sum(percentageYouHitmark>0.7)
+
+    print("numAdversaries", numAdversaries)
+    
 
 
-    print("DetProMax[DetProMax>0.6]", [DetProMax>0.9])
-
-    predictedNum = np.sum([DetProMax>0.6])
-
-    AllNum = len(DetProMax)
-
-    print("DetProMax", DetProMax)
-    print("predictedNum", predictedNum)
-    print("AllNum", AllNum)
-
+#gemma_attack/allProbMaxes/ChancesYouHit_lan_attck_type_bsa_epsilon_0.005_thickEpsilon_0.03_NumattackSamples_100_detectionThreshold_0.9.npy
+#gemma_attack/allProbMaxes/ChancesYouHit_lan_attck_type_bsa_epsilon_0.005_thickEpsilon_0.03_NumattackSamples_50_detectionThreshold_0.9.npy
 
 if __name__ == "__main__":
     main()
