@@ -14,39 +14,38 @@
 export CUDA_VISIBLE_DEVICES=3
 conda activate gemma3
 cd spectralShift
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type bsa --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type bsa --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+
 
 
 export CUDA_VISIBLE_DEVICES=4
 conda activate gemma3
 cd spectralShift
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type nllm --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type nllm --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type nllm --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
 
 
 export CUDA_VISIBLE_DEVICES=5
 conda activate gemma3
 cd spectralShift
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type ega --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type ega --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type ega --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.9
 
 
 export CUDA_VISIBLE_DEVICES=6
 conda activate gemma3
 cd spectralShift
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-
-
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.0005 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type justNoise --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type justNoise --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
+python gemma_attack/GemmaDetectEachAdversaryNew_AveragedTrials.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9
 
 
 
@@ -712,10 +711,6 @@ def adam_attack_original_space(
     # clamped to the same L_inf epsilon ball, instead of the learned/loaded
     # adversarial delta used by every other attck_type.
     if attck_type == "justNoise":
-
-        torch.manual_seed(42)
-        torch.cuda.manual_seed_all(42)
-
         checkItthatWay = torch.randn_like(x_orig01)
         checkItthatWayNormal = 2 * (checkItthatWay - checkItthatWay.min()) / (checkItthatWay.max() - checkItthatWay.min()) - 1
 
@@ -737,56 +732,26 @@ def adam_attack_original_space(
     # built above) with fresh normalized random noise scaled by thickEpsilon,
     # instead of the previous torch.randn_like(best_delta) * thickEpsilon
     # offset applied on top of x_adv01/x_orig01.
-    if whatKindOfAdversary == "weakened1":
+    if whatKindOfAdversary == "weakened":
 
         #x_adv01 = (x_orig01 + delta).clamp(0.0, 1.0)
         #x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
 
-        torch.manual_seed(1)
-        torch.cuda.manual_seed_all(1)
+        #checkItthatWay = torch.randn_like(x_adv01)
 
-        checkItthatWay = torch.randn_like(x_adv01)
-
-        #num_noise_samples = 20
-
-        #checkItthatWay = torch.stack([torch.randn_like(x_adv01) for _ in range(num_noise_samples)]).mean(dim=0)
+        num_noise_samples = 20
+        checkItthatWay = torch.stack([torch.randn_like(x_adv01) for _ in range(num_noise_samples)]).mean(dim=0)
 
         checkItthatWayNormal = 2 * (checkItthatWay - checkItthatWay.min()) / (checkItthatWay.max() - checkItthatWay.min()) - 1
 
         #weak_delta = torch.randn_like(best_delta) * thickEpsilon
 
-        weak_delta = checkItthatWayNormal * thickEpsilon
+        weak_delta = checkItthatWayNormal #* thickEpsilon
 
         x_adv01 = (x_adv01_created + weak_delta).clamp(0.0, 1.0)
         x_adv01 = torch.max(torch.min(x_adv01, x_adv01_created + thickEpsilon), x_adv01_created - thickEpsilon).clamp(0.0, 1.0)
         #x_adv01 = x_adv01_created
         #print("x_adv01 exactly equals x_adv01_created:", torch.equal(x_adv01, x_adv01_created))
-
-    if whatKindOfAdversary == "weakened2":
-
-        #x_adv01 = (x_orig01 + delta).clamp(0.0, 1.0)
-        #x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
-
-        torch.manual_seed(100)
-        torch.cuda.manual_seed_all(100)
-
-        checkItthatWay = torch.randn_like(x_adv01)
-
-        #num_noise_samples = 20
-
-        #checkItthatWay = torch.stack([torch.randn_like(x_adv01) for _ in range(num_noise_samples)]).mean(dim=0)
-
-        checkItthatWayNormal = 2 * (checkItthatWay - checkItthatWay.min()) / (checkItthatWay.max() - checkItthatWay.min()) - 1
-
-        #weak_delta = torch.randn_like(best_delta) * thickEpsilon
-
-        weak_delta = checkItthatWayNormal * thickEpsilon
-
-        x_adv01 = (x_adv01_created + weak_delta).clamp(0.0, 1.0)
-        x_adv01 = torch.max(torch.min(x_adv01, x_adv01_created + thickEpsilon), x_adv01_created - thickEpsilon).clamp(0.0, 1.0)
-        #x_adv01 = x_adv01_created
-        #print("x_adv01 exactly equals x_adv01_created:", torch.equal(x_adv01, x_adv01_created))
-
 
     # preprocess adv (must be differentiable)
     pv_adv = gemma_preprocess_differentiable(x_adv01, processor)
@@ -1001,6 +966,8 @@ def main():
     # how often the strong-vs-weak alignment gap crosses a given probability.
     parser.add_argument("--detectionThreshold", type=float, default=0.98,
                         help="Adam learning rate")
+    parser.add_argument("--numNoiseTrials", type=int, default=1,
+                        help="Number of independent random-noise trials whose per-hook probabilities are averaged")
 
 
 
@@ -1023,6 +990,9 @@ def main():
 
     ega_ratio = float(args.ega_ratio)
     detectionThreshold = float(args.detectionThreshold)
+    numNoiseTrials = int(args.numNoiseTrials)
+    if numNoiseTrials < 1:
+        raise ValueError("--numNoiseTrials must be >= 1")
 
 
     MODEL_PATH = "../illcond/gemma_attack/Gemma3-4b"
@@ -1183,9 +1153,8 @@ def main():
     perAttackSampleProbMins = []
 
     NumTimesYouHitTheMarkPerSample = []
-    probsAllSamplesAlllayer = []
-    for attackSample in range(1,51):
-    #for attackSample in range(1,3):
+    for attackSample in range(3,51):
+    #for attackSample in range(1,51):
         countAdvChance = 0
         countIgnore = 0
         NumTimesYouHitTheMark = 0
@@ -1199,9 +1168,8 @@ def main():
         # layers (vs Qwen2.5-7B's fixed 28), so this is driven off the actual
         # number of layers found on the loaded model instead of a hard-coded
         # range(28).
-        probsAlllayers = []
         for LanLayerTrack in range(len(language_layers)):
-        #for LanLayerTrack in range(4):
+        #for LanLayerTrack in range(2):
 
             with torch.no_grad():
 
@@ -1400,181 +1368,157 @@ def main():
             best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype) #* 0
 
 
-            x_adv01, best_pert, RightSingularInputAlignmentAgainstAdversary, FlattenedAlignmentDistributionsAdversary = adam_attack_original_space(
-                model=model,
-                processor=processor,
-                template_inputs=template_inputs,
-                x_orig01=x_orig01,
-                attck_type=attck_type,
-                whatKindOfAdversary = "strong",
-                num_steps=num_steps,
-                lr=lr,
-                epsilon=epsilon,
-                thickEpsilon = thickEpsilon,
-                device=device,
-                #save_conv_path=conv_path,
-                AttackStartLayer = AttackStartLayer,
-                numLayerstAtAtime = numLayerstAtAtime,
-                allTopRightSingularVectors = allTopRightSingularVectors,
-                best_delta = best_delta
-            )
-            if attackMode == "vis":
-                RightSingularInputAlignmentAgainstAdversary = RightSingularInputAlignmentAgainstAdversary[:6]
-                FlattenedAlignmentDistributionsAdversary = FlattenedAlignmentDistributionsAdversary[:6]
+            # Average the detector probability over independent random-noise trials.
+            # IMPORTANT: we average the resulting probabilities, NOT the noise tensors.
+            # Each trial reruns all three passes, so justNoise gets fresh independent
+            # random realizations on every trial.
+            all_trial_probs = []
 
-            else:
-                RightSingularInputAlignmentAgainstAdversary = RightSingularInputAlignmentAgainstAdversary[7:]
-                FlattenedAlignmentDistributionsAdversary = FlattenedAlignmentDistributionsAdversary[7:]
+            for noiseTrial in range(numNoiseTrials):
+                print(f"Noise trial: {noiseTrial + 1}/{numNoiseTrials}")
 
-            #print("FlattenedAlignmentDistributionsAdversary", FlattenedAlignmentDistributionsAdversary)
-            #FlattenedAlignmentDistributionsAdversary = np.array(FlattenedAlignmentDistributionsAdversary.item())
+                # ---------------- PASS 1: strong ----------------
+                x_adv01, best_pert, RightSingularInputAlignmentAgainstAdversary, FlattenedAlignmentDistributionsAdversary = adam_attack_original_space(
+                    model=model,
+                    processor=processor,
+                    template_inputs=template_inputs,
+                    x_orig01=x_orig01,
+                    attck_type=attck_type,
+                    whatKindOfAdversary="strong",
+                    num_steps=num_steps,
+                    lr=lr,
+                    epsilon=epsilon,
+                    thickEpsilon=thickEpsilon,
+                    device=device,
+                    AttackStartLayer=AttackStartLayer,
+                    numLayerstAtAtime=numLayerstAtAtime,
+                    allTopRightSingularVectors=allTopRightSingularVectors,
+                    best_delta=best_delta
+                )
 
+                if attackMode == "vis":
+                    RightSingularInputAlignmentAgainstAdversary = RightSingularInputAlignmentAgainstAdversary[:6]
+                    FlattenedAlignmentDistributionsAdversary = FlattenedAlignmentDistributionsAdversary[:6]
+                else:
+                    RightSingularInputAlignmentAgainstAdversary = RightSingularInputAlignmentAgainstAdversary[7:]
+                    FlattenedAlignmentDistributionsAdversary = FlattenedAlignmentDistributionsAdversary[7:]
 
-            #for i in range(len(FlattenedAlignmentDistributionsAdversary)):
-                #print("FlattenedAlignmentDistributionsAdversary[i].shape", FlattenedAlignmentDistributionsAdversary[i].shape)
+                final = RightSingularInputAlignmentAgainstAdversary
+                PostAttackAlignments.append(RightSingularInputAlignmentAgainstAdversary)
 
-            final = RightSingularInputAlignmentAgainstAdversary
-            PostAttackAlignments.append(RightSingularInputAlignmentAgainstAdversary)
-            #print("final", final)
+                # ---------------- PASS 2: reference/original-side weakened pass ----------------
+                x_adv01, best_pert, RightSingularInputAlignmentAgainstOriginal, FlattenedAlignmentDistributionsOriginal = adam_attack_original_space(
+                    model=model,
+                    processor=processor,
+                    template_inputs=template_inputs,
+                    x_orig01=x_orig01,
+                    attck_type=attck_type,
+                    whatKindOfAdversary="weakened",
+                    num_steps=num_steps,
+                    lr=lr,
+                    epsilon=epsilon,
+                    thickEpsilon=thickEpsilon,
+                    device=device,
+                    AttackStartLayer=AttackStartLayer,
+                    numLayerstAtAtime=numLayerstAtAtime,
+                    allTopRightSingularVectors=allTopRightSingularVectors,
+                    best_delta=best_delta
+                )
 
-            #------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                if attackMode == "vis":
+                    RightSingularInputAlignmentAgainstOriginal = RightSingularInputAlignmentAgainstOriginal[:6]
+                    FlattenedAlignmentDistributionsOriginal = FlattenedAlignmentDistributionsOriginal[:6]
+                else:
+                    RightSingularInputAlignmentAgainstOriginal = RightSingularInputAlignmentAgainstOriginal[7:]
+                    FlattenedAlignmentDistributionsOriginal = FlattenedAlignmentDistributionsOriginal[7:]
 
-            x_adv01, best_pert, RightSingularInputAlignmentAgainstOriginal, FlattenedAlignmentDistributionsOriginal = adam_attack_original_space(
-                model=model,
-                processor=processor,
-                template_inputs=template_inputs,
-                x_orig01=x_orig01,
-                attck_type=attck_type,
-                whatKindOfAdversary = "weakened1",
-                num_steps=num_steps,
-                lr=lr,
-                epsilon=epsilon,
-                thickEpsilon = thickEpsilon,
-                device=device,
-                #save_conv_path=conv_path,
-                AttackStartLayer = AttackStartLayer,
-                numLayerstAtAtime = numLayerstAtAtime,
-                allTopRightSingularVectors = allTopRightSingularVectors,
-                best_delta = best_delta #best_delta + weak_delta #*0
-            )
+                # ---------------- PASS 3: weak ----------------
+                x_adv01, best_pert, RightSingularInputAlignmentAgainstWeak, FlattenedAlignmentDistributionsWeak = adam_attack_original_space(
+                    model=model,
+                    processor=processor,
+                    template_inputs=template_inputs,
+                    x_orig01=x_orig01,
+                    attck_type=attck_type,
+                    whatKindOfAdversary="weakened",
+                    num_steps=num_steps,
+                    lr=lr,
+                    epsilon=epsilon,
+                    thickEpsilon=thickEpsilon,
+                    device=device,
+                    AttackStartLayer=AttackStartLayer,
+                    numLayerstAtAtime=numLayerstAtAtime,
+                    allTopRightSingularVectors=allTopRightSingularVectors,
+                    best_delta=best_delta
+                )
 
-            if attackMode == "vis":
-                RightSingularInputAlignmentAgainstOriginal = RightSingularInputAlignmentAgainstOriginal[:6]
-                FlattenedAlignmentDistributionsOriginal = FlattenedAlignmentDistributionsOriginal[:6]
+                if attackMode == "vis":
+                    RightSingularInputAlignmentAgainstWeak = RightSingularInputAlignmentAgainstWeak[:6]
+                    FlattenedAlignmentDistributionsWeak = FlattenedAlignmentDistributionsWeak[:6]
+                else:
+                    RightSingularInputAlignmentAgainstWeak = RightSingularInputAlignmentAgainstWeak[7:]
+                    FlattenedAlignmentDistributionsWeak = FlattenedAlignmentDistributionsWeak[7:]
 
-            else:
-                RightSingularInputAlignmentAgainstOriginal = RightSingularInputAlignmentAgainstOriginal[7:]
-                FlattenedAlignmentDistributionsOriginal = FlattenedAlignmentDistributionsOriginal[7:]
+                # ---------------- distances for this trial ----------------
+                DiffStrongThisSample = []
+                DiffWeakThisSample = []
 
+                for i in range(len(FlattenedAlignmentDistributionsOriginal)):
+                    orig_c = FlattenedAlignmentDistributionsOriginal[i]
+                    adv_c = FlattenedAlignmentDistributionsAdversary[i]
+                    weak_c = FlattenedAlignmentDistributionsWeak[i]
 
-                #print("len(FlattenedAlignmentDistributionsOriginal)", len(FlattenedAlignmentDistributionsOriginal))
+                    token_dim = 0 if orig_c.dim() == 2 else 1
 
-            # MODIFIED: third pass - weak (gaussian, same L_inf bound) adversary.
+                    diffStrong = (orig_c - adv_c).pow(2).mean(dim=token_dim).sqrt().flatten()
+                    diffWeak = (orig_c - weak_c).pow(2).mean(dim=token_dim).sqrt().flatten()
 
-            x_adv01, best_pert, RightSingularInputAlignmentAgainstWeak, FlattenedAlignmentDistributionsWeak = adam_attack_original_space(
-                model=model,
-                processor=processor,
-                template_inputs=template_inputs,
-                x_orig01=x_orig01,
-                attck_type=attck_type,
-                whatKindOfAdversary = "weakened2",
-                num_steps=num_steps,
-                lr=lr,
-                epsilon=epsilon,
-                thickEpsilon = thickEpsilon,
-                device=device,
-                AttackStartLayer = AttackStartLayer,
-                numLayerstAtAtime = numLayerstAtAtime,
-                allTopRightSingularVectors = allTopRightSingularVectors,
-                best_delta = best_delta
-            )
+                    DiffStrongThisSample.append(diffStrong)
+                    DiffWeakThisSample.append(diffWeak)
 
-            if attackMode == "vis":
-                RightSingularInputAlignmentAgainstWeak = RightSingularInputAlignmentAgainstWeak[:6]
-                FlattenedAlignmentDistributionsWeak = FlattenedAlignmentDistributionsWeak[:6]
-            else:
-                RightSingularInputAlignmentAgainstWeak = RightSingularInputAlignmentAgainstWeak[7:]
-                FlattenedAlignmentDistributionsWeak = FlattenedAlignmentDistributionsWeak[7:]
+                # One probability per tracked hook for this random trial.
+                trial_probs = []
+                for i in range(len(DiffWeakThisSample)):
+                    weak = DiffWeakThisSample[i]
+                    strong = DiffStrongThisSample[i]
 
+                    if torch.equal(strong, weak):
+                        print(f"trial={noiseTrial + 1}, hook={i}: strong and weak are exactly the same")
 
-            DiffStrongThisSample = []
-            DiffWeakThisSample = []
-            for i in range(len(FlattenedAlignmentDistributionsOriginal)):
-                orig_c = FlattenedAlignmentDistributionsOriginal[i]
-                adv_c = FlattenedAlignmentDistributionsAdversary[i]
-                weak_c = FlattenedAlignmentDistributionsWeak[i]
+                    probs_trial = (strong > weak).float().mean()
+                    trial_probs.append(probs_trial)
 
-                token_dim = 0 if orig_c.dim() == 2 else 1
+                    print(
+                        f"attackSample: {attackSample}, LanLayerTrack: {LanLayerTrack}, "
+                        f"noiseTrial: {noiseTrial + 1}, hook: {i}, probs_trial: {probs_trial.item()}"
+                    )
 
-                diffStrong = (orig_c - adv_c).pow(2).mean(dim=token_dim).sqrt().flatten()
-                diffWeak = (orig_c - weak_c).pow(2).mean(dim=token_dim).sqrt().flatten()
+                all_trial_probs.append(torch.stack(trial_probs))
 
+            # Shape: (numNoiseTrials, number_of_tracked_hooks)
+            all_trial_probs = torch.stack(all_trial_probs)
+            mean_probs = all_trial_probs.mean(dim=0)
+            # unbiased=False avoids NaN when --numNoiseTrials 1.
+            std_probs = all_trial_probs.std(dim=0, unbiased=False)
 
-                DiffStrongThisSample.append(diffStrong)
-                DiffWeakThisSample.append(diffWeak)
+            # Detection/bookkeeping uses the trial-AVERAGED probability.
+            for i in range(len(mean_probs)):
+                probs = mean_probs[i]
 
-
-            for i in range(len(DiffWeakThisSample)):
-                #print("FlattenedAlignmentDistributionsAdversary[i].shape", DiffStrongThisSample[i].shape)
-                #print("FlattenedAlignmentDistributionsOriginal[i].shape", DiffWeakThisSample[i].shape)
-
-                #print("FlattenedAlignmentDistributionsAdversary[i].shape", DiffStrongThisSample[i].shape)
-                #print("FlattenedAlignmentDistributionsOriginal[i].shape", DiffWeakThisSample[i].shape)
-
-                #weak = averagedAggregationOverFlattenedAlignmentDistributionsOriginal[i].detach().to(torch.float32).cpu().numpy()
-                #strong = averagedAggregationFlattenedAlignmentDistributionsAdversary[i].detach().to(torch.float32).cpu().numpy()
-
-                weak = DiffWeakThisSample[i]#.detach().to(torch.float32).cpu().numpy()
-                strong = DiffStrongThisSample[i]#.detach().to(torch.float32).cpu().numpy()
-
-                weak = (weak)
-                strong = (strong)
-
-                #print("weak", weak)
-                #print("strong", strong)
-                if torch.sum(strong==weak) / len(strong) == 1.0:
-                    print("strong and weak are exactly the same")
-
-                #print("weak", weak)
-                #print("strong", strong)
-
-                #print("strong.shape", strong.shape)
-                probs = torch.sum(strong>weak) / len(strong)
-                probsAlllayers.append(probs.item())
-                #print("probsAlllayers", probsAlllayers)
                 if probs >= probMax:
-                    probMax = probs#.copy_()
-
+                    probMax = probs
                 if probs < probMin:
-                    probMin = probs#.copy_()
+                    probMin = probs
 
-                #curDetScore = probs * 100
-                print(f"attackSample: {attackSample}, LanLayerTrack: {LanLayerTrack}, probs: {probs}, probMax: {probMax}")
-                NumTimesYouHit+=1
+                hook_name = point_labels[i] if i < len(point_labels) else str(i)
+                print(
+                    f"AVERAGED -> attackSample: {attackSample}, LanLayerTrack: {LanLayerTrack}, "
+                    f"hook: {hook_name}, mean probs: {probs.item()}, "
+                    f"std: {std_probs[i].item()}, probMax: {probMax.item()}"
+                )
+
+                NumTimesYouHit += 1
                 if probs > detectionThreshold:
-                    #countAdvChance +=1
-                    NumTimesYouHitTheMark+=1
-
-                '''if probs < ignoreThreshold:
-                    countIgnore +=1'''
-
-                '''if countAdvChance > NumCountsSet:
-                    break'''
-                '''if countIgnore > NumCountsSet:
-                    break'''
-
-            '''if countAdvChance > NumCountsSet:
-                print(f"attackSample {attackSample} is an adversary")
-                print(f"Found while tracking {LanLayerTrack}")
-                print()
-                break
-            if countIgnore > NumCountsSet:
-                print(f"attackSample {attackSample} is not an adversary")
-                print(f"Found while tracking {LanLayerTrack}")
-                print()
-                break'''
-
-        probsAlllayersArray = np.array(probsAlllayers)
+                    NumTimesYouHitTheMark += 1
 
         perAttackSampleProbMaxes.append(probMax.item())
         perAttackSampleProbMins.append(probMin.item())
@@ -1590,15 +1534,10 @@ def main():
         print("perAttackSampleProbMaxes", perAttackSampleProbMaxes)
         print("perAttackSampleProbMins", perAttackSampleProbMins)
         print("NumTimesYouHitTheMarkPerSample", NumTimesYouHitTheMarkPerSample)
-        print("NumTimesYouHitTheMarkPerSample", NumTimesYouHitTheMarkPerSample)
-        probsAllSamplesAlllayer.append(probsAlllayersArray)
-    probsAllSamplesAlllayerArray = np.array(probsAllSamplesAlllayer)
-    print("probsAllSamplesAlllayerArray.shape", probsAllSamplesAlllayerArray.shape)
 
-    np.save(f"gemma_attack/allProbMaxes/ProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy", np.array(perAttackSampleProbMaxes))
-    np.save(f"gemma_attack/allProbMaxes/ProbMins_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy", np.array(perAttackSampleProbMins))
-    np.save(f"gemma_attack/allProbMaxes/ChancesYouHit_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy", np.array(NumTimesYouHitTheMarkPerSample))
-    np.save(f"gemma_attack/allProbMaxes/PerSampleLayerStakedHits_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy", probsAllSamplesAlllayerArray)
+    np.save(f"gemma_attack/allProbMaxes/AvgProbMaxes_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}_numNoiseTrials_{numNoiseTrials}.npy", np.array(perAttackSampleProbMaxes))
+    np.save(f"gemma_attack/allProbMaxes/AvgProbMins_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}_numNoiseTrials_{numNoiseTrials}.npy", np.array(perAttackSampleProbMins))
+    np.save(f"gemma_attack/allProbMaxes/AvgChancesYouHit_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}_numNoiseTrials_{numNoiseTrials}.npy", np.array(NumTimesYouHitTheMarkPerSample))
 
 if __name__ == "__main__":
     main()

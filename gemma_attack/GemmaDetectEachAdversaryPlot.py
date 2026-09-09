@@ -25,7 +25,7 @@ python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type ega --desired_n
 export CUDA_VISIBLE_DEVICES=3
 conda activate gemma3
 cd spectralShift
-python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.98 --attackSample 50
 python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
 python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
 python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.9 --attackSample 50
@@ -183,7 +183,7 @@ def main():
 
     NumTimesYouHitTheMarkPerSample = np.load(f"gemma_attack/allProbMaxes/ChancesYouHit_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy")
     percentageYouHitmark = NumTimesYouHitTheMarkPerSample/NumTimesYouHit
-    #print("percentageYouHitmark", percentageYouHitmark)
+    print("percentageYouHitmark", percentageYouHitmark)
 
     numAdversaries = np.sum(percentageYouHitmark>0.7)
 
