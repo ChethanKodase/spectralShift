@@ -25,7 +25,7 @@ conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
-python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.9 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.98 --attackSample 100
 
 
 export CUDA_VISIBLE_DEVICES=2
@@ -49,7 +49,7 @@ conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
-python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.9 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.003 --thickEpsilon 0.1 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.98 --attackSample 100
 
 
 '''
