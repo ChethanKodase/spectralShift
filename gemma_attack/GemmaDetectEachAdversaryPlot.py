@@ -65,6 +65,7 @@ python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type justNoise --des
 python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95 --attackSample 50
 
 
+
 '''
 
 
