@@ -25,7 +25,11 @@ conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 
 
 export CUDA_VISIBLE_DEVICES=2
@@ -33,6 +37,9 @@ conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.002 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 
 
@@ -41,6 +48,9 @@ conda deactivate
 cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.002 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 
 
@@ -50,6 +60,11 @@ cd spectralShift/
 conda activate vlmAttack
 export PYTHONNOUSERSITE=1
 python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python qwen/Qwen2p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+
+
 
 '''
 
@@ -125,10 +140,10 @@ def main():
 
     print("NumTimesYouHitTheMarkPerSample", NumTimesYouHitTheMarkPerSample)
 
-    chancesYouHitmark = NumTimesYouHitTheMarkPerSample/NumSamples
+    #chancesYouHitmark = NumTimesYouHitTheMarkPerSample/NumSamples
 
-    NunTruePositives = np.sum(chancesYouHitmark>0.6)
-    print("Hit Mark : NunTruePositives 1", NunTruePositives)
+    #NunTruePositives = np.sum(chancesYouHitmark>0.6)
+    #print("Hit Mark : NunTruePositives 1", NunTruePositives)
 
 
     probsAllSamplesAlllayerArray = np.load(f"qwen/allProbMaxes/PerSampleLayerStakedHits_{attackMode}_attck_type_{attck_type}_epsilon_{epsilon}_thickEpsilon_{thickEpsilon}_NumattackSamples_{attackSample}_detectionThreshold_{detectionThreshold}.npy")
@@ -139,7 +154,7 @@ def main():
 
     print("MeanAcrossLayersForEachSample", MeanAcrossLayersForEachSample)
     NunPositives = np.sum(MeanAcrossLayersForEachSample>0.9)
-    print(f"Aggregate NunPositives for attack type {attck_type} is: {NunTruePositives} ")
+    print(f"Aggregate NunPositives for attack type {attck_type} is: {NunPositives} ")
 
 if __name__ == "__main__":
     main()
