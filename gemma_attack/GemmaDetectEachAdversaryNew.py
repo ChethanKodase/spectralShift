@@ -11,40 +11,40 @@
 # which intermediate layers are hooked are all unchanged from
 # GemmaDetectEachAdversary.py.
 
-export CUDA_VISIBLE_DEVICES=3
-conda activate gemma3
-cd spectralShift
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-
-
 export CUDA_VISIBLE_DEVICES=4
 conda activate gemma3
 cd spectralShift
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.006 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.007 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.008 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type bsa --desired_norm_l_inf 0.009 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
 
 export CUDA_VISIBLE_DEVICES=5
 conda activate gemma3
 cd spectralShift
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.006 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.007 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.008 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type nllm --desired_norm_l_inf 0.009 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
 
 export CUDA_VISIBLE_DEVICES=6
 conda activate gemma3
 cd spectralShift
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.004 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.003 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
-python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.006 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.007 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.008 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type ega --desired_norm_l_inf 0.009 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --ega_ratio 0.2 --detectionThreshold 0.95
+
+
+export CUDA_VISIBLE_DEVICES=7
+conda activate gemma3
+cd spectralShift
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.006 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.007 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.008 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desired_norm_l_inf 0.009 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
 
 
@@ -1184,7 +1184,8 @@ def main():
 
     NumTimesYouHitTheMarkPerSample = []
     probsAllSamplesAlllayer = []
-    for attackSample in range(1,51):
+    #for attackSample in range(1,51):
+    for attackSample in range(51,101):
     #for attackSample in range(1,3):
         countAdvChance = 0
         countIgnore = 0
