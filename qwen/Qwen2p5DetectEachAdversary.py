@@ -40,7 +40,7 @@ python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=3
 conda deactivate
 cd spectralShift/
 conda activate vlmAttack
@@ -781,7 +781,8 @@ def adam_attack_original_space(
         x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
 
         x_adv01_created = x_adv01
-
+        linf_norm = torch.norm((x_adv01_created-x_orig01), p=float('inf'))
+        print("linf_norm", linf_norm)
 
     else:
         x_adv01 = (x_orig01 + delta).clamp(0.0, 1.0)
