@@ -48,7 +48,17 @@ python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type justNoise --desi
 
 
 
+export CUDA_VISIBLE_DEVICES=7
+conda activate gemma3
+cd spectralShift
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type cleanImages --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
+
+
+export CUDA_VISIBLE_DEVICES=6
+conda activate gemma3
+cd spectralShift
+python gemma_attack/GemmaDetectEachAdversaryNew.py --attck_type cleanImages --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
 
 '''
@@ -726,6 +736,21 @@ def adam_attack_original_space(
 
         x_adv01_created = x_adv01
 
+    if attck_type == "cleanImages":
+
+        #torch.manual_seed(42)
+        #torch.cuda.manual_seed_all(42)
+
+        #checkItthatWay = torch.randn_like(x_orig01)
+        #checkItthatWayNormal = 2 * (checkItthatWay - checkItthatWay.min()) / (checkItthatWay.max() - checkItthatWay.min()) - 1
+
+        #justNoiseHere = checkItthatWayNormal * epsilon
+
+        #x_adv01 = (x_orig01 + justNoiseHere).clamp(0.0, 1.0)
+        #x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
+        x_adv01 = x_orig01
+        x_adv01_created = x_adv01
+
 
     else:
         x_adv01 = (x_orig01 + delta).clamp(0.0, 1.0)
@@ -968,7 +993,7 @@ def main():
     parser = argparse.ArgumentParser(description="Gemma3 ORIGINAL-image-space adversarial attack (no squeeze)")
     parser.add_argument("--attck_type", type=str, default="bsa",
                         help="bsa | nllm | ega | justNoise")
-    parser.add_argument("--desired_norm_l_inf", type=float, default=0.03,
+    parser.add_argument("--desired_norm_l_inf", type=float, default=0.003,
                         help="epsilon L_inf in ORIGINAL pixel space [0..1]. Try 0.01~0.08")
     parser.add_argument("--thickEpsilon", type=float, default=0.03,
                         help="thickEpsilon L_inf in ORIGINAL pixel space [0..1]. Try 0.01~0.08")
@@ -1397,6 +1422,16 @@ def main():
                     f"adv_ORIG_attackType_{attck_typeTemp}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_.pt"
                 )
 
+            if attck_type == "cleanImages":
+                # ADDED (ported from qwen/Qwen2p5DetectEachAdversary.py):
+                # justNoise has no saved delta file of its own -- fall back
+                # to loading the bsa delta just for a correctly-shaped
+                # tensor; its values are unused (see adam_attack_original_space).
+                attck_typeTemp = "bsa"
+                adv_noise_path = (
+                    f"../interpretAttacks/gemma_attack/outputsStorageImagenet/advOutputs/{attackSample}/"
+                    f"adv_ORIG_attackType_{attck_typeTemp}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_.pt"
+                )
 
             best_delta = torch.load(adv_noise_path, map_location=device).to(device=device, dtype=x_orig01.dtype) #* 0
 
