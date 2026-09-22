@@ -16,6 +16,11 @@ python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.007 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.008 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.009 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+
 
 export CUDA_VISIBLE_DEVICES=2
 conda deactivate
@@ -27,6 +32,12 @@ python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+
+
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.007 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.008 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.009 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
 
 export CUDA_VISIBLE_DEVICES=3
@@ -39,6 +50,15 @@ python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.007 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.008 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.009 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+
+
+
+
 
 export CUDA_VISIBLE_DEVICES=3
 conda deactivate
@@ -50,6 +70,32 @@ python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_l_inf 0.001 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+
+
+
+export CUDA_VISIBLE_DEVICES=3
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type cleanImages --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95 
+
+
+
+
+
+
+export CUDA_VISIBLE_DEVICES=3
+conda deactivate
+cd spectralShift/
+conda activate vlmAttack
+export PYTHONNOUSERSITE=1
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type bsa --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type nllm --desired_norm_l_inf 0.007 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type ega --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95 
+python qwen/Qwen2p5DetectEachAdversary.py --attck_type justNoise --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95 
 
 
 
@@ -781,8 +827,21 @@ def adam_attack_original_space(
         x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
 
         x_adv01_created = x_adv01
-        linf_norm = torch.norm((x_adv01_created-x_orig01), p=float('inf'))
-        print("linf_norm", linf_norm)
+        #linf_norm = torch.norm((x_adv01_created-x_orig01), p=float('inf'))
+        #print("linf_norm", linf_norm)
+
+    if attck_type == "cleanImages":
+        #checkItthatWay = torch.randn_like(x_orig01)
+        #checkItthatWayNormal = 2 * (checkItthatWay - checkItthatWay.min()) / (checkItthatWay.max() - checkItthatWay.min()) - 1
+
+        #justNoiseHere = checkItthatWayNormal * epsilon
+
+        #x_adv01 = (x_orig01 + justNoiseHere).clamp(0.0, 1.0)
+        #x_adv01 = torch.max(torch.min(x_adv01, x_orig01 + epsilon), x_orig01 - epsilon).clamp(0.0, 1.0)
+        x_adv01 = x_orig01
+        x_adv01_created = x_adv01
+        #linf_norm = torch.norm((x_adv01_created-x_orig01), p=float('inf'))
+        #print("linf_norm", linf_norm)
 
     else:
         x_adv01 = (x_orig01 + delta).clamp(0.0, 1.0)
@@ -993,7 +1052,7 @@ def main():
     parser = argparse.ArgumentParser(description="Qwen2.5-VL ORIGINAL-image-space adversarial attack (no squeeze)")
     parser.add_argument("--attck_type", type=str, default="bsa",
                         help="bsa | bsa_flat | bsa_flat_lan | bsa_flat_vis")
-    parser.add_argument("--desired_norm_l_inf", type=float, default=0.03,
+    parser.add_argument("--desired_norm_l_inf", type=float, default=0.003,
                         help="epsilon L_inf in ORIGINAL pixel space [0..1]. Try 0.01~0.08")
     parser.add_argument("--thickEpsilon", type=float, default=0.03,
                         help="thickEpsilon L_inf in ORIGINAL pixel space [0..1]. Try 0.01~0.08")
