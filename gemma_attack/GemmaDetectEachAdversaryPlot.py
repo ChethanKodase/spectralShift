@@ -75,6 +75,13 @@ python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type justNoise --des
 
 
 
+export CUDA_VISIBLE_DEVICES=6
+conda activate gemma3
+cd spectralShift
+python gemma_attack/GemmaDetectEachAdversaryPlot.py --attck_type cleanImages --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+
+
+
 '''
 
 
@@ -148,7 +155,7 @@ def main():
     parser = argparse.ArgumentParser(description="Gemma3 ORIGINAL-image-space adversarial attack (no squeeze)")
     parser.add_argument("--attck_type", type=str, default="bsa",
                         help="bsa | nllm | ega")
-    parser.add_argument("--desired_norm_l_inf", type=float, default=0.03,
+    parser.add_argument("--desired_norm_l_inf", type=float, default=0.003,
                         help="epsilon L_inf in ORIGINAL pixel space [0..1]. Try 0.01~0.08")
     parser.add_argument("--thickEpsilon", type=float, default=0.03,
                         help="thickEpsilon L_inf in ORIGINAL pixel space [0..1]. Try 0.01~0.08")
