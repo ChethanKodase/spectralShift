@@ -34,3 +34,6 @@ gemma_attack/allProbMaxes/
 qwen/BertRougLists/
 qwen/AllPlots/
 qwen/ImportantExtras/
+llava_attack/OverlapDistancesAvg/
+llava_attack/OverlapDistancesAvgStdBands/
+llava_attack/OverlapDistancesAvgStdBandsNormalized/
