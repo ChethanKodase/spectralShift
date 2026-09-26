@@ -37,3 +37,4 @@ qwen/ImportantExtras/
 llava_attack/OverlapDistancesAvg/
 llava_attack/OverlapDistancesAvgStdBands/
 llava_attack/OverlapDistancesAvgStdBandsNormalized/
+llava_attack/allProbMaxes/
