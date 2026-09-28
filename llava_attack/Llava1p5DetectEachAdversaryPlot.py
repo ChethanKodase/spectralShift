@@ -25,7 +25,6 @@ conda deactivate
 cd spectralShift/
 conda activate llava15
 export PYTHONNOUSERSITE=1
-python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
