@@ -2,7 +2,7 @@
 
 '''
 export CUDA_VISIBLE_DEVICES=0
-cd interpretAttacks/
+cd spectralShift
 conda activate share4v
 python sharegpt/sharegptLayerCheck.py
 '''
@@ -39,7 +39,7 @@ model.eval()
 model_dtype = next(model.parameters()).dtype
 
 # Load local image
-image_path = "/home/luser/interpretAttacks/llava_attack/dataSamplesForQuant/astronauts68.JPEG"
+image_path = "/home/luser/interpretAttacks/llava_attack/dataSamplesForQuant/2.JPEG"
 
 
 
