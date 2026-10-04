@@ -30,6 +30,10 @@ python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desire
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.002 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.007 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.008 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type bsa --desired_norm_l_inf 0.009 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 
 
 export CUDA_VISIBLE_DEVICES=2
@@ -43,6 +47,11 @@ python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type nllm --desir
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.002 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.007 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.008 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type nllm --desired_norm_l_inf 0.009 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+
+
 
 export CUDA_VISIBLE_DEVICES=3
 conda deactivate
@@ -55,19 +64,35 @@ python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type ega --desire
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.002 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.007 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.008 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type ega --desired_norm_l_inf 0.009 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+
+
 
 export CUDA_VISIBLE_DEVICES=0
 conda deactivate
 cd spectralShift/
 conda activate llava15
 export PYTHONNOUSERSITE=1
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.009 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.008 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.007 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.006 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
 
 
-python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type cleanImages --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 50
+export CUDA_VISIBLE_DEVICES=0
+conda deactivate
+cd spectralShift/
+conda activate llava15
+export PYTHONNOUSERSITE=1
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type cleanImages --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --attackMode lan --detectionThreshold 0.95 --attackSample 100
+python llava_attack/Llava1p5DetectEachAdversaryPlot.py --attck_type cleanImages --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95 
 
 
 '''
