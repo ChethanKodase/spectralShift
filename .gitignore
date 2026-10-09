@@ -39,3 +39,8 @@ llava_attack/OverlapDistancesAvgStdBands/
 llava_attack/OverlapDistancesAvgStdBandsNormalized/
 llava_attack/allBaseProbMaxes/
 llava_attack/allProbMaxes/
+sharegpt/OverlapDistancesAvg/
+sharegpt/OverlapDistancesAvgStdBands/
+sharegpt/OverlapDistancesAvgStdBandsNormalized/
+sharegpt/allProbMaxes/
+sharegpt/share4v/
