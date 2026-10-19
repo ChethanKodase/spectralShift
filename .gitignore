@@ -44,3 +44,4 @@ sharegpt/OverlapDistancesAvgStdBands/
 sharegpt/OverlapDistancesAvgStdBandsNormalized/
 sharegpt/allProbMaxes/
 sharegpt/share4v/
+gemma_attack/allBaseProbMaxes/

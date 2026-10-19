@@ -55,7 +55,7 @@ python gemma_attack/GemmaDetectEachAdversaryBase.py --attck_type ega --desired_n
 
 
 
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=6
 conda activate gemma3
 cd spectralShift
 python gemma_attack/GemmaDetectEachAdversaryBase.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.03 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
@@ -762,7 +762,7 @@ def adam_attack_original_space(
 
         x_adv01_created = x_adv01
 
-    if attck_type == "cleanImages":
+    elif attck_type == "cleanImages":
 
         #torch.manual_seed(42)
         #torch.cuda.manual_seed_all(42)
