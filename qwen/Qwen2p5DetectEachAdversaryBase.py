@@ -15,8 +15,6 @@ python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type bsa --desired_norm_l_
 python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type bsa --desired_norm_l_inf 0.004 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type bsa --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
-
-
 export CUDA_VISIBLE_DEVICES=2
 conda deactivate
 cd spectralShift/
@@ -39,9 +37,6 @@ python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type ega --desired_norm_l_
 python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
 
-
-
-
 export CUDA_VISIBLE_DEVICES=1
 conda deactivate
 cd spectralShift/
@@ -52,6 +47,7 @@ python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type justNoise --desired_n
 python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type justNoise --desired_norm_l_inf 0.003 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type justNoise --desired_norm_l_inf 0.002 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
+python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type cleanImages --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95 
 
 
 export CUDA_VISIBLE_DEVICES=3
@@ -1262,7 +1258,7 @@ def main():
         #attackSample = 39 # check
         probsAlllayers = []
         for LanLayerTrack in range(28):
-        #for LanLayerTrack in range(4):
+        #for LanLayerTrack in range(2):
 
             with torch.no_grad():
 
