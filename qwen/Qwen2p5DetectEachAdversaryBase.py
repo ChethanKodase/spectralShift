@@ -37,7 +37,7 @@ python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type ega --desired_norm_l_
 python qwen/Qwen2p5DetectEachAdversaryBase.py --attck_type ega --desired_norm_l_inf 0.005 --thickEpsilon 0.06 --learningRate 0.001 --num_steps 1000 --AttackStartLayer 0 --numLayerstAtAtime 1 --kthSingVec -10 --attackMode lan --detectionThreshold 0.95
 
 
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=2
 conda deactivate
 cd spectralShift/
 conda activate vlmAttack
@@ -737,8 +737,7 @@ def adam_attack_original_space(
     x_orig01 = x_orig01.detach().to(device)
 
 
-    delta = best_delta
-    delta.requires_grad_(True)
+    delta = best_delta.detach()
 
 
     best_delta = delta.detach().clone()
@@ -782,6 +781,7 @@ def adam_attack_original_space(
         d_modelT = getattr(text_cfg, "hidden_size")
         num_headsT = getattr(text_cfg, "num_attention_heads")
         num_kv_headsT = getattr(text_cfg, "num_key_value_heads", num_headsT)
+        del outputsN
 
 
     adv_inputs = {k: (v.clone() if torch.is_tensor(v) else v) for k, v in template_inputs.items()}
@@ -807,7 +807,7 @@ def adam_attack_original_space(
         #linf_norm = torch.norm((x_adv01_created-x_orig01), p=float('inf'))
         #print("linf_norm", linf_norm)
 
-    if attck_type == "cleanImages":
+    elif attck_type == "cleanImages":
         #checkItthatWay = torch.randn_like(x_orig01)
         #checkItthatWayNormal = 2 * (checkItthatWay - checkItthatWay.min()) / (checkItthatWay.max() - checkItthatWay.min()) - 1
 
@@ -842,13 +842,16 @@ def adam_attack_original_space(
         
 
 
-    # preprocess adv (must be differentiable)
-    pv_adv, grid_adv = qwen_preprocess_differentiable(x_adv01, processor)
+    # preprocess adv (no backward pass is done here, so run without autograd
+    # to avoid keeping the full computation graph alive -> CUDA OOM)
+    with torch.no_grad():
+        pv_adv, grid_adv = qwen_preprocess_differentiable(x_adv01, processor)
 
-    adv_inputs["pixel_values"] = pv_adv
-    adv_inputs["image_grid_thw"] = grid_adv
+        adv_inputs["pixel_values"] = pv_adv
+        adv_inputs["image_grid_thw"] = grid_adv
 
-    outputs = model(**adv_inputs, output_hidden_states=True, return_dict=True)
+        outputs = model(**adv_inputs, output_hidden_states=True, return_dict=True)
+    del outputs
 
 
     #if step%20==0:
@@ -1436,13 +1439,13 @@ def main():
                     f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_.pt"
                 )
 
-            if attck_type=="nllm":
+            elif attck_type=="nllm":
                 adv_noise_path = (
                     f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
                     f"adv_ORIG_attackType_{attck_type}_lr_{lr}_eps_{epsilon}_num_steps_{num_steps}_.pt"
                 )
 
-            if attck_type == "ega":
+            elif attck_type == "ega":
                 ega_ratio = 0.2
                 adv_noise_path = (
                     f"../interpretAttacks/qwen/outputsStorageImagenet/advOutputs/{attackSample}/"
